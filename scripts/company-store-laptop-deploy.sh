@@ -382,14 +382,30 @@ Optional catalog sync (token in apps/web/.env.laptop-deploy):
   set -a && source apps/web/.env.laptop-deploy && set +a
   node scripts/company-fork-e2e-install-check.mjs --base-url '${apex}' --sync
 
-EXACT NEXT STEP — pin desktop COMPANY_STORE_* (Stage 2):
-  In dsh-community-market/src/adapters/company-store.ts (desktop repo):
-    COMPANY_STORE_ENDPOINT = '${apex}/api/v1/plugins'
-    COMPANY_STORE_HOSTNAME = '${host}'
-  Follow dsh-community-market/docs/company-store-endpoint-swap.md
-  Do NOT pin trycloudflare or localhost into production constants.
-  Maintainer Stage 2 apply from this Store repo:
-    npm run apply:company-store-stage2
+========================================================================
+PASTE ORIGIN BACK (or pin yourself) — required for Stage 2 / goal close
+
+1) Preferred — one-shot pin helper (prints exact desktop PR #19 edits):
+
+     COMPANY_STORE_ORIGIN='${apex}' npm run pin:company-store-origin -- --verify
+
+   Apply into a local desktop checkout (cursor/company-store-builtin-cb2c):
+
+     COMPANY_STORE_ORIGIN='${apex}' npm run pin:company-store-origin -- \\
+       --apply --verify --desktop-path /path/to/deepseek-harness-desktop
+
+2) Or paste this origin into the Store cloud agent / PR #1 thread so it can
+   pin desktop PR #19 (hopefullstack-collab/deepseek-harness-desktop#19).
+
+EXACT constants (also printed by the pin script):
+  COMPANY_STORE_PLACEHOLDER_ENDPOINT = '${apex}/api/v1/plugins'
+  COMPANY_STORE_PLACEHOLDER_HOSTNAME = '${host}'
+  (resolved COMPANY_STORE_ENDPOINT / HOSTNAME when local env unset)
+
+Do NOT pin trycloudflare or localhost into production constants.
+Follow dsh-community-market/docs/company-store-endpoint-swap.md
+Maintainer Stage 2 apply from this Store repo:
+  npm run apply:company-store-stage2
 
 If wrangler.jsonc was edited locally (D1/KV ids, stripped routes), either:
   - keep those ids as repo vars / commit intentionally, or

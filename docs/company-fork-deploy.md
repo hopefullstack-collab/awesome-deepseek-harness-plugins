@@ -79,11 +79,28 @@ The script backs up `apps/web/wrangler.jsonc` before editing, writes generated
 secrets to gitignored `apps/web/.env.laptop-deploy`, and prints:
 
 - public origin (`https://company-store.<subdomain>.workers.dev`)
-- exact `COMPANY_STORE_ENDPOINT` / `COMPANY_STORE_HOSTNAME` values to pin
+- exact `COMPANY_STORE_PLACEHOLDER_*` values to pin
+- **paste-back / pin instructions** — reply with the origin on Store PR #1, or run:
+
+```bash
+COMPANY_STORE_ORIGIN='https://company-store.<subdomain>.workers.dev' \
+  npm run pin:company-store-origin -- --verify
+# Apply into desktop PR #19 checkout:
+COMPANY_STORE_ORIGIN='…' npm run pin:company-store-origin -- \
+  --apply --verify --desktop-path /path/to/deepseek-harness-desktop
+```
 
 If auto-editing routes looks unsafe (no `.example` hosts but `routes[]` still
 present), it leaves them alone and prints the exact manual edits instead
 (`./scripts/company-store-laptop-deploy.sh --print-edits-only`).
+
+#### Pin helper (after origin exists)
+
+`npm run pin:company-store-origin` /
+[`scripts/pin-company-store-origin.sh`](../scripts/pin-company-store-origin.sh)
+takes `COMPANY_STORE_ORIGIN=https://…`, refuses trycloudflare/localhost/http,
+and prints (or `--apply`s) the exact desktop PR #19 file edits + commit message.
+Self-test: `COMPANY_STORE_ORIGIN=https://company-store.example-dry-run.workers.dev npm run pin:company-store-origin`.
 
 #### Manual sequence (same steps the script runs)
 
@@ -117,10 +134,10 @@ node scripts/company-fork-e2e-install-check.mjs --base-url "$APEX" --sync
 curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta'
 ```
 
-Only after anonymous HTTPS succeeds: pin desktop `COMPANY_STORE_ENDPOINT` /
-`COMPANY_STORE_HOSTNAME` to that durable HTTPS origin (see desktop
-`company-store-endpoint-swap.md`). Do **not** pin trycloudflare or localhost
-into production constants.
+Only after anonymous HTTPS succeeds: pin desktop placeholders via
+`npm run pin:company-store-origin` (or paste the origin back into the Store
+agent / PR #1). See desktop `company-store-endpoint-swap.md`. Do **not** pin
+trycloudflare or localhost into production constants.
 
 Later (real DNS): restore three `routes[]` patterns, set real apex in
 `site-config.ts`, re-deploy with `--no-workers-dev`, re-pin desktop.
@@ -341,8 +358,15 @@ curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta, (.packa
 
 Prefer `npm run deploy:company-store-laptop` ([§ Local-first B](#b-from-your-laptop--durable-deploy-recommended)).
 That is the maintained one-shot path (login → create D1/KV → strip placeholder
-routes → migrate → deploy → curl HTTPS → print desktop pin). Prefer it over
-waiting for cloud-agent `wrangler login` device codes.
+routes → migrate → deploy → curl HTTPS → print desktop pin + **paste-back**).
+Prefer it over waiting for cloud-agent `wrangler login` device codes.
+
+After success, either paste the printed origin into this PR / cloud agent, or:
+
+```bash
+COMPANY_STORE_ORIGIN='https://company-store.<subdomain>.workers.dev' \
+  npm run pin:company-store-origin -- --verify
+```
 
 ## Interim public HTTPS (cloudflared quick tunnel) — not M1-complete
 

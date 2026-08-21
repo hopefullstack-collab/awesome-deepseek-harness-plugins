@@ -37,13 +37,14 @@ PRs:
 | Preserve `GET /api/v1/plugins` wire + registry `dsh-1024store-catalog` | **Done** | `npm run test:api-contract`, company-fork invariants |
 | Local listening anonymous Market GET | **Done** | `npm run smoke:company-plugins-api` → [`examples/smoke-evidence/LATEST.md`](./examples/smoke-evidence/LATEST.md) |
 | Laptop-first durable deploy runbook | **Done (script + docs)** | `npm run deploy:company-store-laptop` / [`scripts/company-store-laptop-deploy.sh`](../scripts/company-store-laptop-deploy.sh) + [`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock) |
+| Pin helper (paste-back / PR #19 edits) | **Done (script)** | `npm run pin:company-store-origin` / [`scripts/pin-company-store-origin.sh`](../scripts/pin-company-store-origin.sh) — dry-run OK; apply when origin live |
 | Desktop local Market → `:8787` override | **Done (dev-only)** | `DSH_COMPANY_STORE_LOCAL_ENDPOINT` (desktop PR); not production default; does not complete M1 |
 | Interim public HTTPS (tunnel) | **Done (not M1)** | [`examples/smoke-evidence/interim-https-*`](./examples/smoke-evidence/) — `durable: false` |
 | Secrets-gated CF deploy workflow | **Done (code)** | [`.github/workflows/company-fork-deploy.yml`](../.github/workflows/company-fork-deploy.yml); actionlint clean |
-| Company CF API token + account + D1/KV | **Blocked** | Missing credentials audit in [`company-fork-deploy.md`](./company-fork-deploy.md) |
-| Durable public HTTPS apex / workers.dev Worker | **Blocked** | Depends on secrets |
+| Company CF API token + account + D1/KV | **Blocked** | Missing in cloud; laptop `wrangler login` preferred |
+| Durable public HTTPS apex / workers.dev Worker | **Blocked** | Waiting on laptop deploy |
 | Anonymous HTTPS Market GET on durable origin | **Blocked** | Depends on deploy |
-| Pin desktop `COMPANY_STORE_*` to durable origin | **Blocked** | Explicitly deferred; do not pin trycloudflare |
+| Pin desktop `COMPANY_STORE_*` to durable origin | **Blocked** | Run pin script / paste origin when HTTPS OK; do not pin trycloudflare |
 
 ## M2 / Stage 2 — AI Buddy optional `company-store` built-in
 
@@ -92,6 +93,8 @@ PRs:
 
 **Preferred — laptop:** `npm run deploy:company-store-laptop` after `wrangler login`
 ([§ Local-first B](./company-fork-deploy.md#b-from-your-laptop--durable-deploy-recommended)).
+On success, **paste the printed origin back** (PR #1 / cloud agent) or run
+`COMPANY_STORE_ORIGIN=https://… npm run pin:company-store-origin`.
 
 **Alternative — Actions secrets:** exact names + ordered commands in
 [`company-fork-deploy.md` § Human unblock packet](./company-fork-deploy.md#human-unblock-packet-m1--stage-2-pin).
