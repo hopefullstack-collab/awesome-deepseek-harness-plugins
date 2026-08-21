@@ -9,8 +9,9 @@ scan is **off** by default (`TOPIC_DISCOVERY_ENABLED=0`).
 **Yes — run and deploy from your laptop.** This cloud agent has no company
 Cloudflare session (`wrangler whoami` unauthenticated). Interactive
 `wrangler login` on a machine where you already use Cloudflare is the
-fastest path to a durable Worker. GitHub Actions secrets remain an
-alternative; do not wait on cloud device-login polls.
+fastest path to a durable Worker. Use
+`npm run deploy:company-store-laptop` after login (see §B). GitHub Actions
+secrets remain an alternative; do not wait on cloud device-login polls.
 
 Two layers (do not conflate them):
 
@@ -47,7 +48,9 @@ curl -sS 'http://127.0.0.1:8787/api/v1/plugins?limit=1' | jq 'keys, .meta'
 ### B. From your laptop — durable deploy (recommended)
 
 Use a shell where you can complete the Cloudflare browser login (company
-account). Exact sequence for a first **workers.dev** land:
+account). **Preferred:** one script that verifies `whoami`, creates D1/KV when
+placeholders remain, strips `*.company.example` routes for workers.dev, migrates,
+deploys, curls anonymous health/plugins, and prints the exact desktop pin step.
 
 ```bash
 # 0) Clone this fork branch and install
@@ -61,33 +64,51 @@ npx wrangler login
 npx wrangler whoami
 # Expect the company Cloudflare account (note Account ID)
 
-# 2) Create D1 + KV; paste ids into apps/web/wrangler.jsonc
+# 2) One-shot durable land (workers.dev)
+npm run deploy:company-store-laptop
+# equivalent: ./scripts/company-store-laptop-deploy.sh
+#
+# Flags:
+#   --check-only         whoami + plan only
+#   --print-edits-only   print exact wrangler.jsonc edits (no CF calls)
+#   --no-workers-dev     leave routes[] (real custom domains)
+#   --base-url URL       override origin used for post-deploy curls
+```
+
+The script backs up `apps/web/wrangler.jsonc` before editing, writes generated
+secrets to gitignored `apps/web/.env.laptop-deploy`, and prints:
+
+- public origin (`https://company-store.<subdomain>.workers.dev`)
+- exact `COMPANY_STORE_ENDPOINT` / `COMPANY_STORE_HOSTNAME` values to pin
+
+If auto-editing routes looks unsafe (no `.example` hosts but `routes[]` still
+present), it leaves them alone and prints the exact manual edits instead
+(`./scripts/company-store-laptop-deploy.sh --print-edits-only`).
+
+#### Manual sequence (same steps the script runs)
+
+```bash
 cd apps/web
 npx wrangler d1 create company-store-catalog
 # Copy the printed database_id → replace the all-zero database_id in wrangler.jsonc
 npx wrangler kv namespace create CATALOG_CACHE
 # Copy the printed id → replace the all-zero KV id in wrangler.jsonc
 
-# 3) First land on *.workers.dev: remove placeholder custom-domain routes
-#    (plugins.company.example is not a real zone — leaving it fails the deploy).
-#    Delete or comment out the entire "routes": [ ... ], block in wrangler.jsonc
-#    so only the Worker name remains. Keep TOPIC_DISCOVERY_ENABLED "0".
+# First land on *.workers.dev: remove placeholder custom-domain routes
+# (plugins.company.example is not a real zone — leaving it fails the deploy).
+# Delete or comment out the entire "routes": [ ... ], block in wrangler.jsonc
+# so only the Worker name remains. Keep TOPIC_DISCOVERY_ENABLED "0".
 
-# 4) Secrets (minimum for catalog sync + install hashing; OAuth can wait)
 openssl rand -hex 32   # → INSTALL_CLIENT_HASH_SECRET
 openssl rand -hex 32   # → CATALOG_SYNC_TOKEN
-printf '%s' '<INSTALL_CLIENT_HASH_SECRET>' | npx wrangler secret put INSTALL_CLIENT_HASH_SECRET
-printf '%s' '<CATALOG_SYNC_TOKEN>'         | npx wrangler secret put CATALOG_SYNC_TOKEN
-# Optional now: GITHUB_TOKEN, GITHUB_OAUTH_CLIENT_ID, GITHUB_OAUTH_CLIENT_SECRET
+# (script uploads these after deploy; for manual: wrangler secret put …)
 
-# 5) Migrate + deploy (deliberate local act — not implied by git push)
 npx wrangler d1 export CATALOG_DB --remote \
   --output=catalog-backup-$(date +%Y%m%d-%H%M).sql || true   # ok if DB empty on first run
+cd ../..
 npm run db:migrate:remote --workspace @dsh-1024store/web
 npm run deploy
-cd ../..
 
-# 6) Note the workers.dev URL from deploy output, then verify anonymous HTTPS
 export APEX='https://company-store.<your-subdomain>.workers.dev'   # replace
 curl -sS "$APEX/api/v1/health"
 curl -sS "$APEX/api/v1/plugins?limit=1" | jq 'keys, .meta'
@@ -96,13 +117,13 @@ node scripts/company-fork-e2e-install-check.mjs --base-url "$APEX" --sync
 curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta'
 ```
 
-Only after step 6 succeeds: pin desktop `COMPANY_STORE_ENDPOINT` /
+Only after anonymous HTTPS succeeds: pin desktop `COMPANY_STORE_ENDPOINT` /
 `COMPANY_STORE_HOSTNAME` to that durable HTTPS origin (see desktop
 `company-store-endpoint-swap.md`). Do **not** pin trycloudflare or localhost
 into production constants.
 
 Later (real DNS): restore three `routes[]` patterns, set real apex in
-`site-config.ts`, re-deploy, re-pin desktop.
+`site-config.ts`, re-deploy with `--no-workers-dev`, re-pin desktop.
 
 ### C. Dev-only Market → localhost (optional local e2e)
 
@@ -318,10 +339,10 @@ curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta, (.packa
 
 ### C. Interactive laptop path
 
-Full copy-paste sequence (login → create D1/KV → strip placeholder routes →
-secrets → migrate → deploy → curl HTTPS → desktop pin): see
-[§ Local-first B](#b-from-your-laptop--durable-deploy-recommended). Prefer that
-over waiting for cloud-agent `wrangler login` device codes.
+Prefer `npm run deploy:company-store-laptop` ([§ Local-first B](#b-from-your-laptop--durable-deploy-recommended)).
+That is the maintained one-shot path (login → create D1/KV → strip placeholder
+routes → migrate → deploy → curl HTTPS → print desktop pin). Prefer it over
+waiting for cloud-agent `wrangler login` device codes.
 
 ## Interim public HTTPS (cloudflared quick tunnel) — not M1-complete
 

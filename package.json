@@ -36,6 +36,7 @@
     "db:migrate:remote": "npm run db:migrate:remote --workspace @dsh-1024store/web",
     "predeploy": "npm run build",
     "deploy": "npm run deploy:worker --workspace @dsh-1024store/web",
+    "deploy:company-store-laptop": "bash scripts/company-store-laptop-deploy.sh",
     "test:capture-homepage": "node --test scripts/capture-homepage.test.mjs",
     "seed:community": "node apps/web/scripts/seed-community.mjs",
     "smoke:company-plugins-api": "node scripts/smoke-company-plugins-api.mjs",

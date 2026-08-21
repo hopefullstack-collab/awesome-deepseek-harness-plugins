@@ -4,10 +4,11 @@
 built-in verified against that origin are **not** done. Local/interim tunnel
 evidence does **not** complete M1.
 
-**Operator unblock (preferred):** run the laptop path in
-[`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock)
-(`wrangler login` on your machine → D1/KV → deploy → anonymous HTTPS). Localhost
-smoke stays first-class for wire checks; public HTTPS remains the M1 gate.
+**Operator unblock (preferred):** on your laptop after `wrangler login`, run
+`npm run deploy:company-store-laptop` (see
+[`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock)).
+Localhost / trycloudflare are **not** M1-complete. Local API smoke stays
+first-class for wire checks; public HTTPS remains the M1 gate.
 
 Re-verified CF auth blocker (this turn):
 
@@ -35,7 +36,7 @@ PRs:
 | Placeholder hosts + branding | **Done** | `site-config.ts`, PR #1 |
 | Preserve `GET /api/v1/plugins` wire + registry `dsh-1024store-catalog` | **Done** | `npm run test:api-contract`, company-fork invariants |
 | Local listening anonymous Market GET | **Done** | `npm run smoke:company-plugins-api` → [`examples/smoke-evidence/LATEST.md`](./examples/smoke-evidence/LATEST.md) |
-| Laptop-first durable deploy runbook | **Done (docs)** | [`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock) — operator runs `wrangler login` on their machine |
+| Laptop-first durable deploy runbook | **Done (script + docs)** | `npm run deploy:company-store-laptop` / [`scripts/company-store-laptop-deploy.sh`](../scripts/company-store-laptop-deploy.sh) + [`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock) |
 | Desktop local Market → `:8787` override | **Done (dev-only)** | `DSH_COMPANY_STORE_LOCAL_ENDPOINT` (desktop PR); not production default; does not complete M1 |
 | Interim public HTTPS (tunnel) | **Done (not M1)** | [`examples/smoke-evidence/interim-https-*`](./examples/smoke-evidence/) — `durable: false` |
 | Secrets-gated CF deploy workflow | **Done (code)** | [`.github/workflows/company-fork-deploy.yml`](../.github/workflows/company-fork-deploy.yml); actionlint clean |
@@ -89,8 +90,8 @@ PRs:
 
 ## Human unblock (one sitting)
 
-**Preferred — laptop:** [`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock)
-(`wrangler login` → create D1/KV → migrate → deploy → curl HTTPS).
+**Preferred — laptop:** `npm run deploy:company-store-laptop` after `wrangler login`
+([§ Local-first B](./company-fork-deploy.md#b-from-your-laptop--durable-deploy-recommended)).
 
 **Alternative — Actions secrets:** exact names + ordered commands in
 [`company-fork-deploy.md` § Human unblock packet](./company-fork-deploy.md#human-unblock-packet-m1--stage-2-pin).

@@ -52,6 +52,15 @@ mustInclude(ready, 'test:api-contract', 'readiness')
 mustInclude(ready, 'company-fork-invariants.test.ts', 'readiness')
 mustInclude(ready, 'smoke:company-plugins-api', 'readiness')
 
+const laptopScript = join(root, 'scripts/company-store-laptop-deploy.sh')
+if (!existsSync(laptopScript)) fail(`missing ${laptopScript}`)
+else ok('laptop deploy script present')
+const pkg = readFileSync(join(root, 'package.json'), 'utf8')
+mustInclude(pkg, 'deploy:company-store-laptop', 'package.json')
+mustInclude(readFileSync(laptopScript, 'utf8'), 'wrangler whoami', 'laptop deploy')
+mustInclude(readFileSync(laptopScript, 'utf8'), 'wrangler login', 'laptop deploy')
+mustInclude(readFileSync(laptopScript, 'utf8'), 'COMPANY_STORE_ENDPOINT', 'laptop deploy pin hint')
+
 // Soft-skip vs hard-fail contract: push may soft-skip; dispatch must hard-fail.
 if (!/workflow_dispatch[\s\S]*exit 1/.test(deploy) && !deploy.includes('refusing silent skip')) {
   fail('deploy: expected hard-fail path for workflow_dispatch without secrets')
