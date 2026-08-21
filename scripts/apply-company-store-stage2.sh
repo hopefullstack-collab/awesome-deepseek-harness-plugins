@@ -109,17 +109,33 @@ resolve_desktop() {
   fi
 }
 
+resolve_base_ref() {
+  # Prefer a remote-tracking tip that matches REF. Fork checkouts often have
+  # anywhere-labs as `upstream` and the fork as `origin` (no origin/master).
+  local candidate
+  for candidate in "origin/${REF}" "upstream/${REF}" "${REF}"; do
+    if git rev-parse --verify "${candidate}" >/dev/null 2>&1; then
+      printf '%s' "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 prepare_tree() {
-  log "Fetching ${REF} (best-effort)…"
+  log "Fetching ${REF} (best-effort from origin/upstream)…"
   git fetch --quiet origin "${REF}" 2>/dev/null || git fetch --quiet origin 2>/dev/null || true
+  if git remote get-url upstream >/dev/null 2>&1; then
+    git fetch --quiet upstream "${REF}" 2>/dev/null || git fetch --quiet upstream 2>/dev/null || true
+  fi
 
   local base
-  if git rev-parse --verify "origin/${REF}" >/dev/null 2>&1; then
-    base="origin/${REF}"
-  elif git rev-parse --verify "${REF}" >/dev/null 2>&1; then
-    base="${REF}"
-  else
-    die "cannot resolve ref ${REF} (fetch failed and ref missing locally)"
+  if ! base="$(resolve_base_ref)"; then
+    die "cannot resolve ref ${REF} (tried origin/${REF}, upstream/${REF}, ${REF})"
+  fi
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    die "working tree dirty in $(pwd); commit/stash local changes, or use --clone-dir for a fresh apply"
   fi
 
   log "Checking out clean base ${base} ($(git rev-parse --short "${base}"))"
