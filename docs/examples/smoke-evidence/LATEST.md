@@ -16,8 +16,19 @@ Acceptance:
 - [x] JSON includes `packages` and `meta`
 - [x] Package rows expose Market identity fields; `installMethods` array-or-absent
 
-Public HTTPS deploy still blocked without Cloudflare account + real domain
-(see `docs/company-fork-deploy.md` missing-credentials section).
+## Interim public HTTPS recheck (not M1 / not pin-eligible)
+
+Captured: 2026-08-21T23:04:03Z
+Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
+Via: `cloudflared` → `127.0.0.1:8787` (`ha_connections=1`)
+Anonymous `GET /api/v1/health` → `{"status":"ok"}` (200, no Managed Challenge)
+Anonymous `GET /api/v1/plugins?limit=5` → Market JSON keys
+`categories|meta|packages|rankings`, 3 packages (200, no Managed Challenge)
+Pin: `npm run pin:company-store-origin` **refuses** trycloudflare
+Summary: [`interim-https-summary.json`](./interim-https-summary.json)
+
+Public durable HTTPS deploy still blocked (`wrangler whoami` unauthenticated;
+see `docs/company-fork-deploy.md` laptop deploy / secrets). Goal remains OPEN.
 
 ## Local M3 install-path structure (no public CF)
 

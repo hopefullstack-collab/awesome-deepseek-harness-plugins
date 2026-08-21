@@ -1,26 +1,22 @@
-HTTP/2 200 
-date: Fri, 21 Aug 2026 17:50:20 GMT
-content-type: application/json; charset=UTF-8
-cf-ray: a2eb7ac21de08e60-PDX
-cf-cache-status: DYNAMIC
-access-control-allow-origin: *
-age: 0
-cache-control: public, max-age=0, must-revalidate
+HTTP/1.1 200 OK
+Date: Fri, 21 Aug 2026 23:04:04 GMT
+Content-Type: application/json
+Transfer-Encoding: chunked
+Connection: keep-alive
+CF-Ray: a2ed464e9c1beedd-PDX
+CF-Cache-Status: DYNAMIC
+Access-Control-Allow-Origin: *
 x-xss-protection: 0
-etag: W/"d3d1a253-3a8d"
-server: cloudflare
-strict-transport-security: max-age=15552000; includeSubDomains
-vary: accept-encoding
+Server: cloudflare
+Strict-Transport-Security: max-age=15552000; includeSubDomains
+Vary: accept-encoding
 cross-origin-opener-policy: same-origin
 cross-origin-resource-policy: same-origin
 origin-agent-cluster: ?1
 referrer-policy: no-referrer
-x-catalog-source: kv
 x-content-type-options: nosniff
 x-dns-prefetch-control: off
 x-download-options: noopen
-x-edge-cache: hit
 x-frame-options: SAMEORIGIN
 x-permitted-cross-domain-policies: none
-x-robots-tag: noindex
 

@@ -393,6 +393,24 @@ Captured origin example (ephemeral — dies with the agent tunnel process):
 Anonymous `GET /api/v1/plugins?limit=5` returned `packages` + `meta` +
 `rankings` + `categories` (3 curated packages) over TLS.
 
+**Recheck 2026-08-21T23:04Z:** same origin still returns HTTP 200 Market JSON
+with **no** Managed Challenge (agent used DoH @ `1.1.1.1` + `curl --resolve`
+because UDP DNS to public resolvers timed out). Pin helper still refuses this
+host:
+
+```bash
+COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+  npm run pin:company-store-origin -- --dry-run
+# → Refuse trycloudflare (ephemeral)
+```
+
+For laptop Market UI against the local Worker (not production pin):
+
+```bash
+export DSH_COMPANY_STORE_LOCAL_ENDPOINT=1
+# or: export DSH_COMPANY_STORE_LOCAL_ENDPOINT=http://127.0.0.1:8787/api/v1/plugins
+```
+
 **This is interim M1 verification only.** It does **not** complete the durable
 company-domain M1 gate. Do **not** pin desktop `COMPANY_STORE_ENDPOINT` /
 `COMPANY_STORE_HOSTNAME` to a `*.trycloudflare.com` URL (unstable hostname,
