@@ -45,7 +45,7 @@ PRs:
 | Laptop-first durable deploy runbook | **Done (script + docs)** | `npm run deploy:company-store-laptop` / [`scripts/company-store-laptop-deploy.sh`](../scripts/company-store-laptop-deploy.sh) + [`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock) |
 | Pin helper (paste-back / PR #19 edits) | **Done (script)** | `npm run pin:company-store-origin` / [`scripts/pin-company-store-origin.sh`](../scripts/pin-company-store-origin.sh) — dry-run OK; apply when origin live |
 | Desktop local Market → `:8787` override | **Done (dev-only)** | `DSH_COMPANY_STORE_LOCAL_ENDPOINT` (desktop PR); not production default; does not complete M1 |
-| Interim public HTTPS (tunnel) | **Done (not M1)** | `smoke:company-store-live` 6/6 + adapter live parse; [`LIVE.md`](./examples/smoke-evidence/LIVE.md) — `durable: false`, `pinAllowed: false` |
+| Interim public HTTPS (tunnel) | **Done (not M1)** | `smoke:company-store-live` 6/6 + adapter live parse; [`LIVE.md`](./examples/smoke-evidence/LIVE.md) — `durable: false`, `pinAllowed: false`; hostname refreshed 23:22Z |
 | Secrets-gated CF deploy workflow | **Done (code)** | [`.github/workflows/company-fork-deploy.yml`](../.github/workflows/company-fork-deploy.yml); actionlint clean |
 | Company CF API token + account + D1/KV | **Blocked** | Missing in cloud; laptop `wrangler login` preferred |
 | Durable public HTTPS apex / workers.dev Worker | **Blocked** | Waiting on laptop deploy |
