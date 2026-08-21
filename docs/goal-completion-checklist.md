@@ -45,8 +45,9 @@ PRs:
 | Disclaimer `公司目录，收录≠安全审核` | **Done** | `CompanyStoreDisclaimerBanner` + locales EN/ZH + MarketSettingsTab wiring |
 | Adapter + host-routes tests | **Done** | `company-store-adapter.spec.ts`, `company-store-host-routes.spec.ts` |
 | Docs EN + ZH | **Done** | README.md / README.zh.md, market-shell.md / .zh.md, `docs/company-store-builtin.md` + `.zh.md` |
-| Local vitest green | **Done** | 283+ tests on tip (re-run after latest commits) |
-| Desktop GitHub Actions CI on PR | **Blocked (owner)** | Workflow `CI` active but **0 runs**; permissions API 403 — see [`company-store-ci-note`](https://github.com/hopefullstack-collab/deepseek-harness-desktop/blob/cursor/company-store-builtin-cb2c/dsh-community-market/docs/company-store-ci-note.md) |
+| Local vitest green | **Done** | Fork tip `1f64eb6`: **287 passed**; clean upstream-tip port: **285 passed** |
+| Upstream PR attempt | **Opened (dirty)** | [anywhere-labs#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) — unrelated histories; clean tip push 403 to cursor[bot] |
+| Desktop GitHub Actions CI on PR | **Blocked (owner)** | Still **0 workflow runs** / permissions 403 — see [`company-store-ci-note`](https://github.com/hopefullstack-collab/deepseek-harness-desktop/blob/cursor/company-store-builtin-cb2c/dsh-community-market/docs/company-store-ci-note.md) (unchanged) |
 | Merged + re-verified against durable Store | **Blocked** | Needs M1 durable origin + merge |
 
 ## M3 / Stage 3 — E2E install path (public npm; no private registry)
@@ -56,6 +57,7 @@ PRs:
 | Curated sample set + installability rules documented | **Done** | [`examples/curated-reviewed/README.md`](./examples/curated-reviewed/README.md) |
 | Installable wire fixture for adapter | **Done** | `docs/ai-buddy-stage2/patch/fixtures/plugins-api.installable.json` |
 | E2E install notes + operator script after deploy | **Done (docs/script)** | [`company-fork-stage3-e2e-install.md`](./company-fork-stage3-e2e-install.md), `scripts/company-fork-e2e-install-check.mjs` |
+| Local browse→installable structure e2e (no public CF) | **Done (interim)** | `e2e-install-check` PASS on `127.0.0.1:8787`; live 3 browse-only; fixture 3 installable after alias — [`examples/smoke-evidence/local-m3-install-path-2026-08-21T19-31-55Z.json`](./examples/smoke-evidence/local-m3-install-path-2026-08-21T19-31-55Z.json) |
 | Live e2e install against durable HTTPS | **Blocked** | Needs M1 deploy + npm probe on real registry |
 
 ## M4 / Stage 4 — Ops

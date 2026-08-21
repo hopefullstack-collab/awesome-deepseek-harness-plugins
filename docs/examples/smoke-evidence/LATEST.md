@@ -1,36 +1,35 @@
-# Company Store M1 smoke evidence
+# Company Store M1 smoke evidence (local listening origin)
 
-## Local listening origin
-
-Captured: 2026-08-21T17:41:09.962Z
+Captured: 2026-08-21T19:27:36.798Z
 Origin: `http://127.0.0.1:8787`
 Runtime: `wrangler dev --local` (no Cloudflare account)
 Request: `GET http://127.0.0.1:8787/api/v1/plugins?limit=5`
 packages: 3
 meta.total: 3
-meta.source: kv
-Artifact: [`plugins-api-2026-08-21T17-41-09-961Z.json`](./plugins-api-2026-08-21T17-41-09-961Z.json)
+meta.source: stale
+meta.revision: sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f
+body sha256[0:16]: `0784f68a0d84204e`
+Artifact: [`plugins-api-2026-08-21T19-27-36-798Z.json`](./plugins-api-2026-08-21T19-27-36-798Z.json)
 
-Acceptance (local):
+Acceptance:
 - [x] Anonymous GET (no Authorization header)
 - [x] JSON includes `packages` and `meta`
 - [x] Package rows expose Market identity fields; `installMethods` array-or-absent
 
-## Interim public HTTPS (not durable M1)
+Public HTTPS deploy still blocked without Cloudflare account + real domain
+(see `docs/company-fork-deploy.md` missing-credentials section).
 
-Captured: 2026-08-21T17:50:20Z
-Kind: cloudflared quick tunnel → local Worker
-Origin: `https://excel-combo-increasingly-spots.trycloudflare.com` (**ephemeral**)
-Evidence: [`interim-https-summary.json`](./interim-https-summary.json),
-[`interim-https-health.json`](./interim-https-health.json),
-[`interim-https-plugins-slim.json`](./interim-https-plugins-slim.json),
-[`interim-https-headers.txt`](./interim-https-headers.txt)
+## Local M3 install-path structure (no public CF)
 
-Acceptance (interim HTTPS):
-- [x] Anonymous GET over public HTTPS (TLS via Cloudflare edge)
-- [x] `/api/v1/health` → `{"status":"ok"}`
-- [x] `/api/v1/plugins` → `packages` (3) + `meta` + `rankings` + `categories`
-- [ ] Durable company apex / `*.workers.dev` Worker — **still blocked** (no CF API token)
-- [ ] Desktop `COMPANY_STORE_*` constants pinned to durable origin — **deferred** (tunnel URL not stable)
+Captured: 2026-08-21T19:31:55Z
+Script: `node scripts/company-fork-e2e-install-check.mjs --base-url http://127.0.0.1:8787` → PASS
+Evidence: [`local-m3-install-path-2026-08-21T19-31-55Z.json`](./local-m3-install-path-2026-08-21T19-31-55Z.json)
 
-See `docs/company-fork-deploy.md` for credentials audit + secrets-gated Actions deploy.
+| Check | Result |
+| --- | --- |
+| Health / registry `dsh-1024store-catalog` | ok |
+| Live packages | 3 browse-only (`github` methods; no verified npm yet) |
+| Fixture installable wire (alias published_package↔repository_backlink) | 3 installable / 0 browse-only |
+| Private npm invented | no |
+
+Stage 3 stays **blocked** for durable HTTPS + public npm probe; this is strongest in-repo e2e without CF.

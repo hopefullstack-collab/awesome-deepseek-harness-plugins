@@ -57,3 +57,18 @@ registry — do **not** invent package names in catalog JSON.
 
 Until durable HTTPS exists, keep Stage 3 **blocked**; local smoke + installable
 fixtures are preparation only.
+
+## Local interim evidence (this environment)
+
+Against `wrangler dev --local` on `http://127.0.0.1:8787`:
+
+```bash
+node scripts/company-fork-e2e-install-check.mjs --base-url http://127.0.0.1:8787
+# → PASS; installable(verified npm)=0 browse-or-unverified=3
+```
+
+Structure capture (identity fields + classification after
+`published_package`↔`repository_backlink` alias):
+[`examples/smoke-evidence/local-m3-install-path-2026-08-21T19-31-55Z.json`](./examples/smoke-evidence/local-m3-install-path-2026-08-21T19-31-55Z.json).
+Fixture wire proves 3 installable rows; live local rows stay browse-only until a
+public npm probe runs on a durable origin. Do not invent private package names.
