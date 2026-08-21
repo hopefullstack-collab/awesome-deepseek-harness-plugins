@@ -8,7 +8,8 @@ Start at [patch/APPLY.md](./patch/APPLY.md). Product brief:
 
 ## Clean port on upstream `master` (`9d18856`) — preferred apply path
 
-Verified locally: `yarn vitest run` in `dsh-community-market` → **279 passed**.
+Verified locally: `yarn vitest run` in `dsh-community-market` → **279 passed**
+(re-verified 2026-08-21 on tip `c0d5f16`, parent `9d18856`).
 
 | Artifact | Use |
 | --- | --- |
@@ -19,19 +20,41 @@ Product constants in that commit match [patch/APPLY.md](./patch/APPLY.md) (`plug
 
 ### Upstream PR status (this agent)
 
-- Fork PR (clean vs fork `master`): https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19
-- Upstream PR [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) / [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466): **closed** (`mergeable_state: dirty`). No further dirty upstream PRs from this agent.
-- **No clean upstream PR URL** — agent could not publish tip `4d46120` onto a fork ref that descends from `anywhere-labs/master`.
+- **No clean upstream PR URL** — blocked on publishing a tip that descends from `anywhere-labs/master`.
+- Obsolete dirty upstream attempts (do not reopen): [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465), [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466) — both **closed**.
+- Fork-local PR (clean vs diverged fork `master` only): https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19
+- Temporary sync PR on fork (upstream `master` → fork; **dirty** / conflicts): https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/20
+
+### New-fork attempt (2026-08-21) — failed for shared history
+
+| Step | Result |
+| --- | --- |
+| MCP `fork_repository` → org `hopefullstack-collab` | **Invalid**: login is a **user** account, not an organization |
+| `POST /repos/anywhere-labs/deepseek-harness-desktop/forks` with `name=deepseek-harness-desktop-stage2` | **403** `Resource not accessible by integration` |
+| MCP `fork_repository` (no org) | Returns existing diverged fork (cannot have two forks per user) |
+| MCP `create_repository` `deepseek-harness-desktop-stage2` | Created empty repo (not a fork; no upstream network) |
+| `git push --mirror` / push tip `c0d5f16` (parent `9d18856`) | **403** `Permission ... denied to cursor[bot]` |
+| `POST .../git/refs` to `cursor/exact-9d18856` @ `9d18856` | **403** `Resource not accessible by integration` |
+| `POST .../merge-upstream` on existing fork | **403** same |
+| MCP `create_branch` | Works, but only copies an **existing branch tip** (cannot take upstream SHA) |
+
+Existing fork vs upstream: `master` tips `2b8f88d` vs `9d18856`; compare status **diverged** (merge-base `7ff6c98`).
+
+**Do not open more dirty upstream PRs.** Maintainer apply path below remains valid.
 
 ### Unblock permissions (exact)
 
 | Actor | Capability needed |
 | --- | --- |
 | Fork owner (`hopefullstack-collab`) | GitHub UI **Sync fork** on `master`, **or** `POST /repos/hopefullstack-collab/deepseek-harness-desktop/merge-upstream` with `branch=master` |
-| GitHub App / `gh` as `cursor[bot]` | **Contents: Write** on the fork (today: **403** `Resource not accessible by integration` on `merge-upstream`, `git/refs`, `git/blobs`, `merges`) |
-| Push of clean tip | Rights to push `4d46120` (parent `9d18856`) to a fork branch (today: **403** denied to `cursor[bot]`; MCP `create_branch` cannot take a SHA) |
+| Token / App with **Contents: Write** (not cursor[bot] as used here) | Create ref `refs/heads/cursor/company-store-builtin-cb2c` at tip with parent `9d18856` (local tip after `git am` was `c0d5f16`), then open PR → `anywhere-labs/master` |
+| Rename/delete diverged fork then re-fork | Would allow a fresh shared-history fork; current App cannot rename (`PATCH` repo → 403) |
 
 **Maintainer fallback:** apply the patch/bundle above on current upstream tip. Do **not** pin `COMPANY_STORE_*` until durable company Store HTTPS exists.
+
+### Cloudflare
+
+`wrangler whoami` → **not authenticated**. No deploy / no `COMPANY_STORE_*` pin this run.
 
 Upstream reference clone:
 
