@@ -2,10 +2,11 @@
 
 ## Stage 2 upstream PR
 
-- **Desktop fork PR:** [https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19](https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19)
-- **Branch:** `cursor/company-store-builtin-cb2c` (base `master`)
+- **Desktop fork PR (clean):** [https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19](https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19)
+- **Branch:** `cursor/company-store-builtin-cb2c` (base fork `master`)
 - **Fork:** `hopefullstack-collab/deepseek-harness-desktop` (from `anywhere-labs/deepseek-harness-desktop`)
-- **Local verification:** `dsh-community-market` assemble + wiring + `yarn vitest run` → **283 tests passed** on tip
+- **Clean upstream-tip port:** commit `4d46120` on `9d18856` — Store [`company-store-stage2-on-9d18856.patch`](./ai-buddy-stage2/company-store-stage2-on-9d18856.patch) / [`.bundle`](./ai-buddy-stage2/company-store-stage2-on-9d18856.bundle) (**279** vitest)
+- **Upstream PRs:** [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) / [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466) **closed** (dirty). No clean upstream PR until fork sync or tip push.
 
 ## Status
 
@@ -13,7 +14,7 @@
 | --- | --- |
 | Package location | [`anywhere-labs/deepseek-harness-desktop`](https://github.com/anywhere-labs/deepseek-harness-desktop) → `dsh-community-market/` (also `jo32/DeepDeck` → `plugins/community-market/`) |
 | Writable fork | [`hopefullstack-collab/deepseek-harness-desktop`](https://github.com/hopefullstack-collab/deepseek-harness-desktop) (GitHub MCP; `gh` CLI remains read-only for cursor[bot]) |
-| Stage 2 PR | [PR #19](https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19) on `cursor/company-store-builtin-cb2c` → `master` |
+| Stage 2 PR | Fork [PR #19](https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19) clean; **no clean upstream PR** (dirty #465/#466 closed). Maintainer: patch/bundle on `anywhere-labs/master` or sync fork + push `4d46120` |
 | Local market tests | assemble + wiring + `yarn vitest run` → **283 passed** on tip |
 | Ready-to-apply patch (Store repo) | [`docs/ai-buddy-stage2/patch/`](../ai-buddy-stage2/patch/APPLY.md) (reference / re-apply aid) |
 

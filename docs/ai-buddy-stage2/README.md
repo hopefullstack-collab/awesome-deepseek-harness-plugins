@@ -20,9 +20,18 @@ Product constants in that commit match [patch/APPLY.md](./patch/APPLY.md) (`plug
 ### Upstream PR status (this agent)
 
 - Fork PR (clean vs fork `master`): https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19
-- Upstream PR #465 / #466: open but `mergeable_state: dirty` — fork history does not share a merge-base with `anywhere-labs/master`. This agent cannot create a fork ref at upstream SHA `9d18856` (MCP `create_branch` only accepts branch names; `gh` integration token **403** on `git/refs`; `git push` as `cursor[bot]` **403**). **Maintainers should apply the patch/bundle above on upstream tip**, or push rights for commit `4d46120`.
+- Upstream PR [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) / [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466): **closed** (`mergeable_state: dirty`). No further dirty upstream PRs from this agent.
+- **No clean upstream PR URL** — agent could not publish tip `4d46120` onto a fork ref that descends from `anywhere-labs/master`.
 
-Do **not** pin `COMPANY_STORE_*` until durable company Store HTTPS exists.
+### Unblock permissions (exact)
+
+| Actor | Capability needed |
+| --- | --- |
+| Fork owner (`hopefullstack-collab`) | GitHub UI **Sync fork** on `master`, **or** `POST /repos/hopefullstack-collab/deepseek-harness-desktop/merge-upstream` with `branch=master` |
+| GitHub App / `gh` as `cursor[bot]` | **Contents: Write** on the fork (today: **403** `Resource not accessible by integration` on `merge-upstream`, `git/refs`, `git/blobs`, `merges`) |
+| Push of clean tip | Rights to push `4d46120` (parent `9d18856`) to a fork branch (today: **403** denied to `cursor[bot]`; MCP `create_branch` cannot take a SHA) |
+
+**Maintainer fallback:** apply the patch/bundle above on current upstream tip. Do **not** pin `COMPANY_STORE_*` until durable company Store HTTPS exists.
 
 Upstream reference clone:
 
