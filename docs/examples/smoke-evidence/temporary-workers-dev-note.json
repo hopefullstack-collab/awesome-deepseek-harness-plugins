@@ -1,0 +1,16 @@
+{
+  "capturedAt": "2026-08-21T18:00:04Z",
+  "kind": "wrangler-deploy-temporary-preview",
+  "durable": false,
+  "m1Complete": false,
+  "workersDevOrigin": "https://company-store-preview.adaptable-pint.workers.dev",
+  "claimWithinMinutes": 60,
+  "anonymousGetUsable": false,
+  "observations": [
+    "Deploy succeeded without company CLOUDFLARE_API_TOKEN using wrangler deploy --temporary",
+    "Minimal config omitted D1/KV/DO (zero-id placeholders cannot bind on preview account)",
+    "Anonymous curl received Cloudflare Managed Challenge (HTTP 403 HTML, cf-mitigated: challenge) and/or Worker 1101",
+    "Not suitable as Market origin; do not pin desktop COMPANY_STORE_* constants"
+  ],
+  "preferredInterimEvidence": "interim-https-summary.json (cloudflared quick tunnel with full local D1 catalog)"
+}

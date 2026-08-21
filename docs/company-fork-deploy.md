@@ -216,6 +216,29 @@ Workflow: [`.github/workflows/company-fork-deploy.yml`](../.github/workflows/com
 6. Later: commit real DNS routes in `wrangler.jsonc`, set
    `COMPANY_DEPLOY_WORKERS_DEV=false`, re-run for the company apex.
 
+
+
+## Wrangler `--temporary` preview (also not durable)
+
+Re-checked this turn: `wrangler whoami` still unauthenticated, but Wrangler 4.x
+offers `wrangler deploy --temporary` (preview account, claim within ~60 minutes).
+
+Attempted a minimal assets-only deploy (no D1/KV/DO — placeholders cannot bind
+on a preview account):
+
+- Preview URL: `https://company-store-preview.adaptable-pint.workers.dev`
+- Upload succeeded; Version ID recorded in agent logs
+- Anonymous `curl` to `/api/v1/health` and `/api/v1/plugins` hit Cloudflare
+  **Managed Challenge** (`cf-mitigated: challenge`, HTTP 403 HTML) and/or Worker
+  exception `1101` (bindings missing) — **not** a usable Market origin
+- Claim window is short; unclaimed preview accounts expire — **not durable**
+
+Treat this the same as the trycloudflare tunnel: useful proof that Cloudflare
+edge HTTPS can be reached without a company account, but **do not** pin desktop
+`COMPANY_STORE_*` constants here. Durable M1 still needs company
+`CLOUDFLARE_API_TOKEN` + account + D1/KV via `.github/workflows/company-fork-deploy.yml`
+(or interactive `wrangler login` + real domain checklist above).
+
 ## Local listening smoke (M1 acceptance without CF)
 
 Vite `npm run dev` needs a Cloudflare remote-proxy token in this environment.
