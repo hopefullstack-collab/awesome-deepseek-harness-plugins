@@ -1,5 +1,9 @@
 # Apply Stage 2: `company-store` in dsh-community-market
 
+**Preferred:** from the Store repo root run
+[`../../scripts/apply-company-store-stage2.sh`](../../scripts/apply-company-store-stage2.sh)
+(one command: clone/checkout/`git am`/vitest/next steps; no push).
+
 **Upstream package found:** `anywhere-labs/deepseek-harness-desktop` →
 `dsh-community-market/` (public clone works; this Cloud Agent token cannot
 fork/push there). Apply this patch in a clone you can push, on branch

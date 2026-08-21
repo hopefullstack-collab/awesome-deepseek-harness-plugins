@@ -6,13 +6,31 @@ retargeting official **`dsh-1024store`**.
 Start at [patch/APPLY.md](./patch/APPLY.md). Product brief:
 [../ai-buddy-company-market.md](../ai-buddy-company-market.md).
 
-## Clean port on upstream `master` (`9d18856`) — preferred apply path
+## One-command maintainer apply (preferred)
+
+From this Store repo root, a Desktop maintainer with a writable remote can land
+Stage 2 on current upstream tip without cursor[bot] push rights:
+
+```bash
+./scripts/apply-company-store-stage2.sh
+# or against an existing checkout:
+./scripts/apply-company-store-stage2.sh --desktop-path /path/to/deepseek-harness-desktop
+```
+
+The script clones/uses `anywhere-labs/deepseek-harness-desktop`, checks out
+`master`, `git am`s [`company-store-stage2-on-9d18856.patch`](./company-store-stage2-on-9d18856.patch)
+(falls back to `git apply --3way`), runs `yarn vitest run` in
+`dsh-community-market`, and prints push/PR next steps. It **never pushes** and
+**never opens** an upstream PR.
+
+## Clean port on upstream `master` (`9d18856`) — manual artifacts
 
 Verified locally: `yarn vitest run` in `dsh-community-market` → **279 passed**
 (re-verified 2026-08-21 on tip `c0d5f16`, parent `9d18856`).
 
 | Artifact | Use |
 | --- | --- |
+| [`../scripts/apply-company-store-stage2.sh`](../scripts/apply-company-store-stage2.sh) | **One command** — clone/checkout/`git am`/vitest/next steps |
 | [`company-store-stage2-on-9d18856.patch`](./company-store-stage2-on-9d18856.patch) | `git checkout 9d18856 && git am company-store-stage2-on-9d18856.patch` |
 | [`company-store-stage2-on-9d18856.bundle`](./company-store-stage2-on-9d18856.bundle) | `git fetch company-store-stage2-on-9d18856.bundle 4d46120:cursor/company-store-builtin-cb2c` (single commit on parent `9d18856`) |
 
@@ -50,7 +68,7 @@ Existing fork vs upstream: `master` tips `2b8f88d` vs `9d18856`; compare status 
 | Token / App with **Contents: Write** (not cursor[bot] as used here) | Create ref `refs/heads/cursor/company-store-builtin-cb2c` at tip with parent `9d18856` (local tip after `git am` was `c0d5f16`), then open PR → `anywhere-labs/master` |
 | Rename/delete diverged fork then re-fork | Would allow a fresh shared-history fork; current App cannot rename (`PATCH` repo → 403) |
 
-**Maintainer fallback:** apply the patch/bundle above on current upstream tip. Do **not** pin `COMPANY_STORE_*` until durable company Store HTTPS exists.
+**Maintainer fallback:** run [`../scripts/apply-company-store-stage2.sh`](../scripts/apply-company-store-stage2.sh) (or apply the patch/bundle above) on current upstream tip. Do **not** pin `COMPANY_STORE_*` until durable company Store HTTPS exists.
 
 ### Cloudflare
 
