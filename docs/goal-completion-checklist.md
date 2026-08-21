@@ -17,7 +17,8 @@ Re-verified CF auth blocker (this turn):
 PRs:
 
 - Store: https://github.com/hopefullstack-collab/awesome-deepseek-harness-plugins/pull/1 (`cursor/company-store-fork-cb2c`)
-- Desktop: https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19 (`cursor/company-store-builtin-cb2c`)
+- Desktop fork: https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19 (`cursor/company-store-builtin-cb2c`)
+- Desktop upstream attempt: https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465 (dirty merge-base; see PR body)
 
 ---
 
