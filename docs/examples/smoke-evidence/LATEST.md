@@ -16,8 +16,19 @@ Acceptance:
 - [x] JSON includes `packages` and `meta`
 - [x] Package rows expose Market identity fields; `installMethods` array-or-absent
 
-Public HTTPS deploy still blocked without Cloudflare account + real domain
-(see `docs/company-fork-deploy.md` missing-credentials section).
+## Interim public HTTPS recheck (not M1 / not pin-eligible)
+
+Captured: 2026-08-21T23:04:03Z
+Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
+Via: `cloudflared` → `127.0.0.1:8787` (`ha_connections=1`)
+Anonymous `GET /api/v1/health` → `{"status":"ok"}` (200, no Managed Challenge)
+Anonymous `GET /api/v1/plugins?limit=5` → Market JSON keys
+`categories|meta|packages|rankings`, 3 packages (200, no Managed Challenge)
+Pin: `npm run pin:company-store-origin` **refuses** trycloudflare
+Summary: [`interim-https-summary.json`](./interim-https-summary.json)
+
+Public durable HTTPS deploy still blocked (`wrangler whoami` unauthenticated;
+see `docs/company-fork-deploy.md` laptop deploy / secrets). Goal remains OPEN.
 
 ## Local M3 install-path structure (no public CF)
 
@@ -33,3 +44,20 @@ Evidence: [`local-m3-install-path-2026-08-21T19-31-55Z.json`](./local-m3-install
 | Private npm invented | no |
 
 Stage 3 stays **blocked** for durable HTTPS + public npm probe; this is strongest in-repo e2e without CF.
+
+## Live-origin smoke (`smoke:company-store-live`)
+
+Captured: 2026-08-21T23:10:44.581Z
+Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
+PASS checks: 6/6 (health, packages/meta/installMethods, `q` hit/miss, search pagination, pin refuse)
+durable=false pinAllowed=false
+Details: [`LIVE.md`](./LIVE.md) · [`live-smoke-2026-08-21T23-10-44-581Z.json`](./live-smoke-2026-08-21T23-10-44-581Z.json)
+
+## Stage 2 adapter live wire (`verify:company-store-adapter-live`)
+
+Captured: 2026-08-21T23:10:46.466Z
+Fed interim Market JSON through desktop `createDsh1024StyleStoreAdapter` → **PASS**
+items=3 browseOnly=3 github=3 npm=0 (no invented npm identity)
+Artifact: [`adapter-live-2026-08-21T23-10-46-466Z.json`](./adapter-live-2026-08-21T23-10-46-466Z.json)
+Does **not** pin `COMPANY_STORE_*`.
+

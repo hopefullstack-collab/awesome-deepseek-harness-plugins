@@ -10,19 +10,23 @@ evidence does **not** complete M1.
 Localhost / trycloudflare are **not** M1-complete. Local API smoke stays
 first-class for wire checks; public HTTPS remains the M1 gate.
 
-Re-verified CF auth blocker (this turn):
+Status check (2026-08-21T23:10Z):
 
 | Check | Result |
 | --- | --- |
-| `npx wrangler whoami` | Not authenticated |
-| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` env | Absent |
-| Cursor `environment-info` | `environment: null` (no linked secrets) |
-| GitHub Actions secrets API | 403 for this integration (cannot list values; operator must confirm names in repo Settings) |
-| Wrangler temporary preview account | Ephemeral only — Managed Challenge / missing D1; **not** durable M1 |
+| `wrangler whoami` | **Not authenticated** — durable deploy+pin blocked this turn |
+| `wrangler dev --local` `:8787` | Up — anonymous Market JSON |
+| cloudflared quick tunnel | Up — interim HTTPS still live |
+| Interim origin | `https://excel-combo-increasingly-spots.trycloudflare.com` |
+| `npm run smoke:company-store-live` | **PASS 6/6** against interim (health, packages/meta/installMethods, `q`, search pagination, pin refuse) → [`examples/smoke-evidence/LIVE.md`](./examples/smoke-evidence/LIVE.md) |
+| `npm run verify:company-store-adapter-live` | **PASS** — desktop adapter parsed live wire (3 browse-only github; 0 invented npm) |
+| `npm run pin:company-store-origin` on trycloudflare | **Refused** (by design) — no Stage 2 production pin |
+| Manual Market local test | `DSH_COMPANY_STORE_LOCAL_ENDPOINT=1` (loopback only); do not pin tunnel |
+| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | Absent |
 
 PRs:
 
-- Store: https://github.com/hopefullstack-collab/awesome-deepseek-harness-plugins/pull/1 (`cursor/company-store-fork-cb2c`)
+- Store: https://github.com/hopefullstack-collab/awesome-deepseek-harness-plugins/pull/1 (`cursor/company-store-fork-cb2c`) — interim evidence consolidated here; PR #2 closed as duplicate
 - Desktop fork: https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19 (`cursor/company-store-builtin-cb2c`)
 - Desktop upstream: **no clean PR** — [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) / [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466) closed as dirty. Unblock = fork **Sync fork** / `merge-upstream` (**Contents: Write**) or push tip `4d46120`. **Maintainer one-command:** [`scripts/apply-company-store-stage2.sh`](../scripts/apply-company-store-stage2.sh) (clone/`git am`/vitest/next steps; no push). Artifacts: [`company-store-stage2-on-9d18856.patch`](./ai-buddy-stage2/company-store-stage2-on-9d18856.patch) + [`.bundle`](./ai-buddy-stage2/company-store-stage2-on-9d18856.bundle) (279/279 vitest).
 
@@ -39,7 +43,7 @@ PRs:
 | Laptop-first durable deploy runbook | **Done (script + docs)** | `npm run deploy:company-store-laptop` / [`scripts/company-store-laptop-deploy.sh`](../scripts/company-store-laptop-deploy.sh) + [`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock) |
 | Pin helper (paste-back / PR #19 edits) | **Done (script)** | `npm run pin:company-store-origin` / [`scripts/pin-company-store-origin.sh`](../scripts/pin-company-store-origin.sh) — dry-run OK; apply when origin live |
 | Desktop local Market → `:8787` override | **Done (dev-only)** | `DSH_COMPANY_STORE_LOCAL_ENDPOINT` (desktop PR); not production default; does not complete M1 |
-| Interim public HTTPS (tunnel) | **Done (not M1)** | [`examples/smoke-evidence/interim-https-*`](./examples/smoke-evidence/) — `durable: false` |
+| Interim public HTTPS (tunnel) | **Done (not M1)** | `smoke:company-store-live` 6/6 + adapter live parse; [`LIVE.md`](./examples/smoke-evidence/LIVE.md) — `durable: false`, `pinAllowed: false` |
 | Secrets-gated CF deploy workflow | **Done (code)** | [`.github/workflows/company-fork-deploy.yml`](../.github/workflows/company-fork-deploy.yml); actionlint clean |
 | Company CF API token + account + D1/KV | **Blocked** | Missing in cloud; laptop `wrangler login` preferred |
 | Durable public HTTPS apex / workers.dev Worker | **Blocked** | Waiting on laptop deploy |

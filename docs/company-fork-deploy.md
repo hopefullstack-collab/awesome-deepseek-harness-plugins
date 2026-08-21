@@ -381,7 +381,9 @@ Evidence (committed under `docs/examples/smoke-evidence/`):
 
 | File | Contents |
 | --- | --- |
-| `interim-https-summary.json` | Origin, package count, wire keys, durable=false |
+| `LIVE.md` / `live-smoke-*.json` | `npm run smoke:company-store-live` — health, packages/meta/installMethods, `q`, search pagination, pin refuse |
+| `adapter-live-*.json` | `npm run verify:company-store-adapter-live` — desktop Stage 2 parser on live wire |
+| `interim-https-summary.json` | Earlier manual recheck summary (`durable: false`) |
 | `interim-https-health.json` | `GET /api/v1/health` → `{"status":"ok"}` |
 | `interim-https-plugins-slim.json` | Slim `packages` / `meta` extract |
 | `interim-https-headers.txt` | HTTP/2 200, `server: cloudflare`, HSTS |
@@ -390,8 +392,28 @@ Captured origin example (ephemeral — dies with the agent tunnel process):
 
 `https://excel-combo-increasingly-spots.trycloudflare.com`
 
-Anonymous `GET /api/v1/plugins?limit=5` returned `packages` + `meta` +
-`rankings` + `categories` (3 curated packages) over TLS.
+Strongest recheck (2026-08-21T23:10Z):
+
+```bash
+COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+  npm run smoke:company-store-live
+# → PASS 6/6 (durable=false pinAllowed=false)
+
+COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+  npm run verify:company-store-adapter-live
+# → PASS adapter browse-only parse (no invented npm)
+
+COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+  npm run pin:company-store-origin -- --dry-run
+# → Refuse trycloudflare (ephemeral)
+```
+
+For laptop Market UI against the local Worker (not production pin):
+
+```bash
+export DSH_COMPANY_STORE_LOCAL_ENDPOINT=1
+# or: export DSH_COMPANY_STORE_LOCAL_ENDPOINT=http://127.0.0.1:8787/api/v1/plugins
+```
 
 **This is interim M1 verification only.** It does **not** complete the durable
 company-domain M1 gate. Do **not** pin desktop `COMPANY_STORE_ENDPOINT` /
