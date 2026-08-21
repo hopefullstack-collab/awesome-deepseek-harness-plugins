@@ -4,20 +4,22 @@
 built-in verified against that origin are **not** done. Local/interim tunnel
 evidence does **not** complete M1.
 
-**Operator unblock (preferred):** on your laptop after `wrangler login`, run
-`npm run deploy:company-store-laptop` (see
-[`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock)).
+**Operator unblock (preferred):** 中文操作卡
+[`company-store-操作卡.md`](./company-store-操作卡.md) — laptop `wrangler login` +
+`npm run deploy:company-store-laptop`（详见
+[`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock)）。
 Localhost / trycloudflare are **not** M1-complete. Local API smoke stays
 first-class for wire checks; public HTTPS remains the M1 gate.
 
-Status check (2026-08-21T23:23Z):
+Status check (2026-08-21T23:28Z):
 
 | Check | Result |
 | --- | --- |
-| `wrangler whoami` | **Not authenticated** — durable deploy+pin blocked this turn (no CF device poll) |
+| `wrangler whoami` | **Not authenticated** — durable deploy+pin blocked (no CF device poll) |
+| Durable origin scan | **None** (no live `*.workers.dev` / apex; timer armed ≥15m recheck) |
 | `wrangler dev --local` `:8787` | Up — anonymous Market JSON |
-| cloudflared quick tunnel | Up — **URL refreshed** after prior hostname DNS death |
-| Interim origin | `https://mas-speeds-constitutional-cleared.trycloudflare.com` (was `excel-combo-…`) |
+| cloudflared quick tunnel | Up — kept |
+| Interim origin | `https://mas-speeds-constitutional-cleared.trycloudflare.com` (联调 only) |
 | `npm run smoke:company-store-live` | **PASS 6/6** against interim → [`examples/smoke-evidence/LIVE.md`](./examples/smoke-evidence/LIVE.md) |
 | `npm run verify:company-store-adapter-live` | **PASS** — desktop adapter parsed live wire (3 browse-only github; 0 invented npm) |
 | Desktop vitest `company-store-adapter` + `host-routes` | **PASS 10/10** (no live HTTPS env override — loopback-only by design) |

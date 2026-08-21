@@ -6,6 +6,8 @@ scan is **off** by default (`TOPIC_DISCOVERY_ENABLED=0`).
 
 ## Local-first (recommended unblock)
 
+**中文操作卡（复制粘贴）：** [`company-store-操作卡.md`](./company-store-操作卡.md)
+
 **Yes — run and deploy from your laptop.** This cloud agent has no company
 Cloudflare session (`wrangler whoami` unauthenticated). Interactive
 `wrangler login` on a machine where you already use Cloudflare is the
