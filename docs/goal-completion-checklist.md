@@ -18,7 +18,7 @@ PRs:
 
 - Store: https://github.com/hopefullstack-collab/awesome-deepseek-harness-plugins/pull/1 (`cursor/company-store-fork-cb2c`)
 - Desktop fork: https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19 (`cursor/company-store-builtin-cb2c`)
-- Desktop upstream attempt: https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465 (dirty merge-base; see PR body)
+- Desktop upstream attempts: [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) / [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466) (`mergeable_state: dirty` — unrelated fork history). Clean single-commit port `4d46120` on `9d18856` (279/279 vitest) shipped as Store artifacts [`docs/ai-buddy-stage2/company-store-stage2-on-9d18856.patch`](./ai-buddy-stage2/company-store-stage2-on-9d18856.patch) + [`.bundle`](./ai-buddy-stage2/company-store-stage2-on-9d18856.bundle).
 
 ---
 
@@ -46,8 +46,8 @@ PRs:
 | Disclaimer `公司目录，收录≠安全审核` | **Done** | `CompanyStoreDisclaimerBanner` + locales EN/ZH + MarketSettingsTab wiring |
 | Adapter + host-routes tests | **Done** | `company-store-adapter.spec.ts`, `company-store-host-routes.spec.ts` |
 | Docs EN + ZH | **Done** | README.md / README.zh.md, market-shell.md / .zh.md, `docs/company-store-builtin.md` + `.zh.md` |
-| Local vitest green | **Done** | Fork tip `1f64eb6`: **287 passed**; clean upstream-tip port: **285 passed** |
-| Upstream PR attempt | **Opened (dirty)** | [anywhere-labs#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) — unrelated histories; clean tip push 403 to cursor[bot] |
+| Local vitest green | **Done** | Fork tip `1f64eb6`: **287 passed**; clean upstream-tip port `4d46120` on `9d18856`: **279 passed** |
+| Upstream PR attempt | **Opened (dirty)** | [#465](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/465) / [#466](https://github.com/anywhere-labs/deepseek-harness-desktop/pull/466) — unrelated histories; agent cannot create fork ref at upstream SHA. **Maintainer apply:** [`company-store-stage2-on-9d18856.patch`](./ai-buddy-stage2/company-store-stage2-on-9d18856.patch) / [`.bundle`](./ai-buddy-stage2/company-store-stage2-on-9d18856.bundle) |
 | Desktop GitHub Actions CI on PR | **Blocked (owner)** | Still **0 workflow runs** / permissions 403 — see [`company-store-ci-note`](https://github.com/hopefullstack-collab/deepseek-harness-desktop/blob/cursor/company-store-builtin-cb2c/dsh-community-market/docs/company-store-ci-note.md) (unchanged) |
 | Merged + re-verified against durable Store | **Blocked** | Needs M1 durable origin + merge |
 
