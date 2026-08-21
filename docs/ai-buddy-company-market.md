@@ -1,17 +1,24 @@
 # AI Buddy Market: company-store built-in (Stage 2)
 
+## Stage 2 upstream PR
+
+- **Desktop fork PR:** [https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19](https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19)
+- **Branch:** `cursor/company-store-builtin-cb2c` (base `master`)
+- **Fork:** `hopefullstack-collab/deepseek-harness-desktop` (from `anywhere-labs/deepseek-harness-desktop`)
+- **Local verification:** `dsh-community-market` assemble + wiring + `yarn vitest run` → **283 tests passed** on tip
+
 ## Status
 
 | Check | Evidence |
 | --- | --- |
-| Package location | **Found (read-only):** [`anywhere-labs/deepseek-harness-desktop`](https://github.com/anywhere-labs/deepseek-harness-desktop) → `dsh-community-market/` |
-| Also mirrored | `jo32/DeepDeck` → `plugins/community-market/` (similar layout) |
-| Push / fork from this agent | **Blocked** (GitHub token: no fork/push to those remotes) |
-| Ready-to-apply patch in this Store repo | [`docs/ai-buddy-stage2/patch/`](../ai-buddy-stage2/patch/APPLY.md) |
+| Package location | [`anywhere-labs/deepseek-harness-desktop`](https://github.com/anywhere-labs/deepseek-harness-desktop) → `dsh-community-market/` (also `jo32/DeepDeck` → `plugins/community-market/`) |
+| Writable fork | [`hopefullstack-collab/deepseek-harness-desktop`](https://github.com/hopefullstack-collab/deepseek-harness-desktop) (GitHub MCP; `gh` CLI remains read-only for cursor[bot]) |
+| Stage 2 PR | [PR #19](https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19) on `cursor/company-store-builtin-cb2c` → `master` |
+| Local market tests | assemble + wiring + `yarn vitest run` → **283 passed** on tip |
+| Ready-to-apply patch (Store repo) | [`docs/ai-buddy-stage2/patch/`](../ai-buddy-stage2/patch/APPLY.md) (reference / re-apply aid) |
 
 Official `dsh-1024store` / `dshfind` remain optional partners alongside the
-company source. Goal completion still requires the patch to land + test green
-in a writable AI Buddy / market clone.
+company source. Goal completion still requires **real company domain deploy** and Stage 2 **merged + re-verified** on the desktop fork.
 
 ## Product rules
 
