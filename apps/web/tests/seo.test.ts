@@ -114,8 +114,8 @@ describe('SEO metadata', () => {
     expect(website).toContain('"name":"Company Store"')
     expect(website).not.toContain('SearchAction')
     expect(website).not.toContain('search_term_string')
-    expect(website).toContain('"DeepSeek Harness Plugin Store"')
-    expect(website).toContain('"DSH"')
+    expect(website).toContain('"Company Plugin Catalog"')
+    expect(website).toContain('"公司插件目录"')
   })
 
   it('ranks each ItemList the way that page actually ranks', () => {

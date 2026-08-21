@@ -1,6 +1,24 @@
 import { readFileSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 
+/**
+ * node:sqlite's DatabaseSync accepts anonymous `?` placeholders via
+ * `.get(...params)` but rejects D1-style numbered `?1` / `?2` bindings with
+ * SQLITE_RANGE ("column index out of range"). Cloudflare D1 accepts both.
+ * Expand numbered placeholders in appearance order so community SQL (and any
+ * other D1-numbered queries) run under the in-memory test driver.
+ */
+function expandNumberedParams(sql: string, params: unknown[]): { sql: string; params: unknown[] } {
+  if (!/\?\d+/.test(sql)) return { sql, params }
+  const expanded: unknown[] = []
+  const rewritten = sql.replace(/\?(\d+)/g, (_match, digits: string) => {
+    const index = Number(digits) - 1
+    expanded.push(params[index])
+    return '?'
+  })
+  return { sql: rewritten, params: expanded }
+}
+
 class SqliteD1Statement {
   constructor(
     private readonly database: DatabaseSync,
@@ -12,16 +30,24 @@ class SqliteD1Statement {
     return new SqliteD1Statement(this.database, this.sql, params)
   }
 
+  private prepared() {
+    const { sql, params } = expandNumberedParams(this.sql, this.params)
+    return { statement: this.database.prepare(sql), params }
+  }
+
   async all<T>() {
-    return { results: this.database.prepare(this.sql).all(...this.params) as T[] }
+    const { statement, params } = this.prepared()
+    return { results: statement.all(...params) as T[] }
   }
 
   async first<T>() {
-    return (this.database.prepare(this.sql).get(...this.params) as T | undefined) ?? null
+    const { statement, params } = this.prepared()
+    return (statement.get(...params) as T | undefined) ?? null
   }
 
   async run() {
-    const result = this.database.prepare(this.sql).run(...this.params)
+    const { statement, params } = this.prepared()
+    const result = statement.run(...params)
     return { success: true, meta: { changes: Number(result.changes) } }
   }
 }

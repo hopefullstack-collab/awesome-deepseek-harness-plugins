@@ -391,6 +391,8 @@ describe('runPluginClassifyTask', () => {
       CATALOG_DB: sqliteD1(database),
       AI: { run },
       CATALOG_CACHE: { get: vi.fn(), put: vi.fn() },
+      // Fixtures seed topic-discovered rows; exercise the enabled path.
+      TOPIC_DISCOVERY_ENABLED: '1',
     } as unknown as Env
   }
   const reply = (items: unknown[], neurons = 12) => ({
