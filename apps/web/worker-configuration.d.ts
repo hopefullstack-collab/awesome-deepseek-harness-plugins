@@ -8,6 +8,7 @@ interface __BaseEnv_Env {
 	CF_VERSION_METADATA: WorkerVersionMetadata;
 	ASSETS: Fetcher;
 	COMMUNITY_ADMIN_LOGINS: "";
+	TOPIC_DISCOVERY_ENABLED: "0" | "1" | string;
 	GITHUB_TOKEN: string;
 	INSTALL_CLIENT_HASH_SECRET: string;
 	CATALOG_SYNC_TOKEN: string;
@@ -27,7 +28,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "COMMUNITY_ADMIN_LOGINS" | "GITHUB_TOKEN" | "INSTALL_CLIENT_HASH_SECRET" | "CATALOG_SYNC_TOKEN" | "GITHUB_OAUTH_CLIENT_ID" | "GITHUB_OAUTH_CLIENT_SECRET">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "COMMUNITY_ADMIN_LOGINS" | "TOPIC_DISCOVERY_ENABLED" | "GITHUB_TOKEN" | "INSTALL_CLIENT_HASH_SECRET" | "CATALOG_SYNC_TOKEN" | "GITHUB_OAUTH_CLIENT_ID" | "GITHUB_OAUTH_CLIENT_SECRET">> {}
 }
 
 // Begin runtime types

@@ -359,58 +359,58 @@ describe('edge cache key normalization', () => {
   it('keeps only the params that shape the body, in a fixed order', () => {
     // A cache-buster or reordered params must land on the same entry, or a
     // busy caller shatters the cache into a cold miss per request.
-    const canonical = key('https://deepseek1024.com/api/v2/plugins?category=ui&page=2&sort=newest')
-    expect(key('https://deepseek1024.com/api/v2/plugins?page=2&category=ui&sort=newest&utm=x&_=99'))
+    const canonical = key('https://plugins.company.example/api/v2/plugins?category=ui&page=2&sort=newest')
+    expect(key('https://plugins.company.example/api/v2/plugins?page=2&category=ui&sort=newest&utm=x&_=99'))
       .toBe(canonical)
-    expect(key('https://deepseek1024.com/api/v2/plugins?sort=newest&category=ui&page=2'))
+    expect(key('https://plugins.company.example/api/v2/plugins?sort=newest&category=ui&page=2'))
       .toBe(canonical)
   })
 
   it('drops every param on a no-param endpoint', () => {
-    const bare = key('https://deepseek1024.com/api/v2/rankings')
-    expect(key('https://deepseek1024.com/api/v2/rankings?bust=123')).toBe(bare)
-    expect(bare).toBe('https://deepseek1024.com/api/v2/rankings')
+    const bare = key('https://plugins.company.example/api/v2/rankings')
+    expect(key('https://plugins.company.example/api/v2/rankings?bust=123')).toBe(bare)
+    expect(bare).toBe('https://plugins.company.example/api/v2/rankings')
   })
 
   it('canonicalizes detail requests without caching plugin search', () => {
-    expect(key('https://deepseek1024.com/api/v1/plugins/owner/repo?bust=1'))
-      .toBe('https://deepseek1024.com/api/v1/plugins/owner/repo')
-    expect(key('https://deepseek1024.com/api/v2/plugins/owner/repo?bust=1'))
-      .toBe('https://deepseek1024.com/api/v2/plugins/owner/repo')
-    expect(key('https://deepseek1024.com/api/v1/plugins/search?q=repo')).toBeNull()
+    expect(key('https://plugins.company.example/api/v1/plugins/owner/repo?bust=1'))
+      .toBe('https://plugins.company.example/api/v1/plugins/owner/repo')
+    expect(key('https://plugins.company.example/api/v2/plugins/owner/repo?bust=1'))
+      .toBe('https://plugins.company.example/api/v2/plugins/owner/repo')
+    expect(key('https://plugins.company.example/api/v1/plugins/search?q=repo')).toBeNull()
   })
 
   it('versions the v1 listing cache independently of its public query shape', () => {
-    expect(key('https://deepseek1024.com/api/v1/plugins'))
-      .toBe('https://deepseek1024.com/__edge_cache/v2/api/v1/plugins')
-    expect(key('https://deepseek1024.com/api/v1/plugins?sort=name&bust=old'))
-      .toBe('https://deepseek1024.com/__edge_cache/v2/api/v1/plugins?sort=name')
+    expect(key('https://plugins.company.example/api/v1/plugins'))
+      .toBe('https://plugins.company.example/__edge_cache/v2/api/v1/plugins')
+    expect(key('https://plugins.company.example/api/v1/plugins?sort=name&bust=old'))
+      .toBe('https://plugins.company.example/__edge_cache/v2/api/v1/plugins?sort=name')
   })
 
   it('versions npm-bearing listing and ranking caches for ownership fixes', () => {
-    expect(key('https://deepseek1024.com/api/v2/plugins?sort=npmDownloads7d'))
-      .toBe('https://deepseek1024.com/__edge_cache/v1/api/v2/plugins?sort=npmDownloads7d')
-    expect(key('https://deepseek1024.com/api/v3/rankings?bust=old'))
-      .toBe('https://deepseek1024.com/__edge_cache/v1/api/v3/rankings')
+    expect(key('https://plugins.company.example/api/v2/plugins?sort=npmDownloads7d'))
+      .toBe('https://plugins.company.example/__edge_cache/v1/api/v2/plugins?sort=npmDownloads7d')
+    expect(key('https://plugins.company.example/api/v3/rankings?bust=old'))
+      .toBe('https://plugins.company.example/__edge_cache/v1/api/v3/rankings')
   })
 
   it('isolates HTML routes by Worker version while preserving their whole URL', () => {
     // A filtered permutation carries different SEO metadata than the bare page,
     // so its query must stay in the key. A deploy or rollback must move the
     // namespace so stale HTML cannot reference another version's asset hashes.
-    expect(key('https://deepseek1024.com/plugins?category=ui'))
-      .toBe('https://deepseek1024.com/__edge_cache/html/worker-version-a/plugins?category=ui')
-    expect(key('https://deepseek1024.com/plugins?category=ui', 'worker-version-b'))
-      .toBe('https://deepseek1024.com/__edge_cache/html/worker-version-b/plugins?category=ui')
+    expect(key('https://plugins.company.example/plugins?category=ui'))
+      .toBe('https://plugins.company.example/__edge_cache/html/worker-version-a/plugins?category=ui')
+    expect(key('https://plugins.company.example/plugins?category=ui', 'worker-version-b'))
+      .toBe('https://plugins.company.example/__edge_cache/html/worker-version-b/plugins?category=ui')
   })
 
   it('keeps API cache keys stable across Worker versions', () => {
-    expect(key('https://deepseek1024.com/api/v3/rankings', 'worker-version-a'))
-      .toBe(key('https://deepseek1024.com/api/v3/rankings', 'worker-version-b'))
+    expect(key('https://plugins.company.example/api/v3/rankings', 'worker-version-a'))
+      .toBe(key('https://plugins.company.example/api/v3/rankings', 'worker-version-b'))
   })
 
   it('does not cache an off-allowlist api path', () => {
-    expect(key('https://deepseek1024.com/api/v1/plugins/search?q=x')).toBeNull()
+    expect(key('https://plugins.company.example/api/v1/plugins/search?q=x')).toBeNull()
   })
 })
 
@@ -425,7 +425,7 @@ describe('conditional catalog requests', () => {
   }
 
   function conditional(ifNoneMatch: string | null): Request {
-    return new Request('https://deepseek1024.com/api/v1/plugins', {
+    return new Request('https://plugins.company.example/api/v1/plugins', {
       headers: ifNoneMatch ? { 'If-None-Match': ifNoneMatch } : {},
     })
   }

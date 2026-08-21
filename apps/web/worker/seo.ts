@@ -548,11 +548,11 @@ export function buildLlmsFullTxt(catalog: SeoCatalog): string {
       return `## ${categoryLabelFor(catalog, category, 'en')} (${plugins.length})\n\n${lines.join('\n')}`
     })
   return [
-    '# DSH 1024Store — full DeepSeek Harness plugin catalog',
+    '# Company Store — full DeepSeek Harness plugin catalog',
     '',
     `> ${catalog.plugins.length} plugins for DeepSeek Harness (\`dsh\`), DeepSeek's coding-agent CLI. Updated ${catalog.updated}.`,
     '> Install any listed plugin with: dsh plugin --profile web add github:<owner>/<repository>',
-    `> Source: ${SITE_ORIGIN}/ · Search API: https://api.deepseek1024.com/v1/plugins/search?q=`,
+    `> Source: ${SITE_ORIGIN}/ · Search API: https://api.plugins.company.example/v1/plugins/search?q=`,
     '',
     ...sections,
     '',

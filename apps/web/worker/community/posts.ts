@@ -1,8 +1,9 @@
 import { normalizePluginId, pluginDetailPath } from '../lib/plugin-id'
+import { DEFAULT_SITE_ORIGIN, publishedPluginPredicate } from '../lib/site-config'
 import type { Post, PostPluginRef } from './contract'
 
 /** Where a plugin card points. The catalog lives on the main site, not here. */
-const SITE_ORIGIN = 'https://deepseek1024.com'
+const SITE_ORIGIN = DEFAULT_SITE_ORIGIN
 
 export const FEED_PAGE_SIZE = 20
 export const MAX_REPLIES_PER_THREAD = 200
@@ -74,10 +75,9 @@ interface PluginRow {
  * Resolve every mentioned plugin for a batch of posts in one query.
  *
  * Only plugins the catalog actually publishes come back — the same predicate the
- * catalog snapshot uses (a submission, or a topic-discovered repository that
- * passed validation). A mention of something that was never in the catalog, or
- * has since been dropped from it, renders as plain text rather than as a card
- * pointing at a 404.
+ * catalog snapshot uses. Company fork default is curated (`from_pr`) only.
+ * A mention of something that was never in the catalog, or has since been
+ * dropped from it, renders as plain text rather than as a card pointing at a 404.
  */
 /**
  * D1 rejects a query with more than 100 bound parameters.
@@ -96,6 +96,7 @@ const D1_MAX_BOUND_PARAMETERS = 90
 async function loadPluginRefs(
   db: D1Database,
   postIds: readonly number[],
+  options: { includeTopicDiscoveries?: boolean } = {},
 ): Promise<Map<number, PostPluginRef[]>> {
   const byPost = new Map<number, PostPluginRef[]>()
   if (postIds.length === 0) return byPost
@@ -105,6 +106,7 @@ async function loadPluginRefs(
     chunks.push(postIds.slice(index, index + D1_MAX_BOUND_PARAMETERS))
   }
 
+  const includeTopic = options.includeTopicDiscoveries === true
   const pages = await Promise.all(chunks.map((chunk) => db.prepare(
     `SELECT pp.post_id, pp.position,
             cp.plugin_id, cp.curated_name, cp.curated_category, cp.ai_category,
@@ -113,7 +115,7 @@ async function loadPluginRefs(
        JOIN catalog_plugins cp ON cp.normalized_plugin_id = pp.normalized_plugin_id
        JOIN catalog_repositories r ON r.id = cp.repository_id
       WHERE pp.post_id IN (${chunk.map(() => '?').join(', ')})
-        AND (cp.from_pr = 1 OR (r.from_topic = 1 AND cp.validation_status = 'accepted'))
+        AND ${publishedPluginPredicate(includeTopic).replace(/\bp\./g, 'cp.')}
       ORDER BY pp.post_id, pp.position`,
   ).bind(...chunk).all<PluginRow>()))
 

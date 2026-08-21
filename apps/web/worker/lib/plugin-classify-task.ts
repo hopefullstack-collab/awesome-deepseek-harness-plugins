@@ -9,6 +9,7 @@ import {
   type ClassificationResult,
 } from './catalog-db'
 import { refreshCatalogSnapshot } from './catalog-store'
+import { isTopicDiscoveryEnabled } from './site-config'
 
 /**
  * Bump to re-run every AI-owned row. Any change that alters the output — model,
@@ -284,7 +285,12 @@ export async function runPluginClassifyTask(
       counters.budgetExhausted = true
       break
     }
-    const candidates = await loadClassificationQueue(env.CATALOG_DB, CLASSIFIER_VERSION, batchSize)
+    const candidates = await loadClassificationQueue(
+      env.CATALOG_DB,
+      CLASSIFIER_VERSION,
+      batchSize,
+      { includeTopicDiscoveries: isTopicDiscoveryEnabled(env) },
+    )
     if (candidates.length === 0) break
 
     let response: AiChatResponse

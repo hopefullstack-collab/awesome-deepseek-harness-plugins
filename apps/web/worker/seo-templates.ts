@@ -12,10 +12,12 @@ import type { CatalogPlugin, Language, RegistryPlugin } from './types'
  * browser bundle.
  */
 
-export const SITE_ORIGIN = 'https://deepseek1024.com'
-export const SITE_NAME = 'DSH 1024Store'
+export const SITE_ORIGIN = 'https://plugins.company.example'
+/** TODO: finalize EN display name with stakeholders. */
+export const SITE_NAME = 'Company Store'
 export const SITE_IMAGE = `${SITE_ORIGIN}/og-default.png`
-export const GITHUB_REPOSITORY = 'https://github.com/imsai-sh/awesome-deepseek-harness-plugins'
+/** TODO: point at the company fork remote once the public GitHub org is fixed. */
+export const GITHUB_REPOSITORY = 'https://github.com/hopefullstack-collab/awesome-deepseek-harness-plugins'
 export const TITLE_MAX = 60
 export const DESC_MAX = 160
 
@@ -114,11 +116,12 @@ export function pluginDescription(
  * per-view because the masthead is shared, and the pre-hydration shell has to
  * state exactly what the rendered page states.
  */
-export const BRAND_HEADING = 'DeepSeek Harness Plugin 1024Store'
+export const BRAND_HEADING = 'Company Store'
 
 const HERO_INTRO = {
-  en: 'Every listing passes DSH plugin spec checks and screening first. Then compare community plugins by wrapper-CLI install reports, GitHub stars, releases, and repository activity to find established and emerging tools.',
-  zh: '收录插件均先经 DSH 插件规范检查与过滤，再按包装 CLI 上报的安装记录、GitHub Star、发布记录与仓库活跃度比较，发现成熟工具与潜力新项目。',
+  // Company fork: catalog is company-reviewed curated entries, not whole-network topic scan.
+  en: 'Company-reviewed plugins only. Listing means inclusion in the company catalog — not a security audit. Compare by install reports, GitHub stars, releases, and repository activity.',
+  zh: '仅收录公司审核通过的插件。收录≠安全审核。可按安装上报、GitHub Star、发布记录与仓库活跃度比较。',
 }
 
 export type CollectionView = 'rankings' | 'catalog' | 'apiDocs' | 'account' | 'community' | 'communityRules'
@@ -174,11 +177,11 @@ export function collectionCopy(
       ? {
           title: `DeepSeek Harness 插件搜索 API | ${SITE_NAME}`,
           description: fitText(
-            'DSH 1024Store 免费公开 API：搜索 DeepSeek Harness 社区插件目录，GitHub 登录即可申请 API Key，限流透明。',
+            'Company Store 免费公开 API：搜索公司审核的插件目录，GitHub 登录即可申请 API Key，限流透明。',
             DESC_MAX,
           ),
           heading: '开发者 API',
-          intro: '以编程方式查询 DSH 1024Store 插件目录。匿名请求即开即用；使用 GitHub 登录并创建 API Key 可获得更高配额。',
+          intro: '以编程方式查询 Company Store（公司插件目录）。匿名请求即开即用；使用 GitHub 登录并创建 API Key 可获得更高配额。',
           listHeading: '接口',
         }
       : {
@@ -188,7 +191,7 @@ export function collectionCopy(
             DESC_MAX,
           ),
           heading: 'Developer API',
-          intro: 'Query the DSH 1024Store plugin catalog programmatically. Anonymous requests work out of the box; sign in with GitHub and create an API key for higher limits.',
+          intro: 'Query the Company Store plugin catalog programmatically. Anonymous requests work out of the box; sign in with GitHub and create an API key for higher limits.',
           listHeading: 'Endpoints',
         }
   }
@@ -232,16 +235,16 @@ export function collectionCopy(
     return zh
       ? {
           title: `账户与 API Key | ${SITE_NAME}`,
-          description: '管理你的 DSH 1024Store 账户与开发者 API Key。',
+          description: '管理你的 Company Store 账户与开发者 API Key。',
           heading: '账户与 API Key',
-          intro: '管理你的 DSH 1024Store 账户与开发者 API Key。',
+          intro: '管理你的 Company Store 账户与开发者 API Key。',
           listHeading: 'API Key',
         }
       : {
           title: `Account & API keys | ${SITE_NAME}`,
-          description: 'Manage your DSH 1024Store account and developer API keys.',
+          description: 'Manage your Company Store account and developer API keys.',
           heading: 'Account & API keys',
-          intro: 'Manage your DSH 1024Store account and developer API keys.',
+          intro: 'Manage your Company Store account and developer API keys.',
           listHeading: 'API keys',
         }
   }
@@ -282,13 +285,10 @@ export function siteNodes(): object[] {
       url: `${SITE_ORIGIN}/`,
       inLanguage: ['en', 'zh-CN'],
       alternateName: [
-        'DSH',
-        'DSH Store',
-        'DSH 1024Store',
-        'DeepSeek Harness Plugin Store',
-        'DeepSeek Harness Plugin Marketplace',
-        'DeepSeek Harness 插件市场',
-        'DeepSeek Harness 插件商店',
+        // TODO: finalize alternate names with company brand guidelines.
+        'Company Store',
+        '公司插件目录',
+        'Company Plugin Catalog',
       ],
       publisher: { '@id': `${SITE_ORIGIN}/#organization` },
     },
@@ -455,10 +455,10 @@ export function apiDocsNodes(copy: CollectionCopy, language: Language): object[]
     {
       '@type': 'WebAPI',
       '@id': `${url}#api`,
-      name: 'DSH 1024Store Plugin Search API',
+      name: 'Company Store Plugin Search API',
       description: copy.description,
       documentation: url,
-      url: 'https://api.deepseek1024.com/v1/plugins/search',
+      url: 'https://api.plugins.company.example/v1/plugins/search',
       provider: { '@id': `${SITE_ORIGIN}/#organization` },
     },
   ]

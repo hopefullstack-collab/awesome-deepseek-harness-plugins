@@ -1,5 +1,11 @@
 # Cloudflare plugin discovery
 
+> **Company fork note:** By default this fork sets `TOPIC_DISCOVERY_ENABLED=0`
+> and keeps discovery crons empty so the Market publishes only curated
+> `catalog/plugins/*.json` entries. See [company-fork-deploy.md](./company-fork-deploy.md).
+> The rest of this document describes the upstream whole-network topic scan for
+> when that var is intentionally re-enabled.
+
 ## Production data flow
 
 GitHub repositories carrying the `dsh-plugin` topic are the primary discovery source. The

@@ -7,7 +7,7 @@ import { communityDatabase, sqliteD1 } from './community-fixtures'
 import { testCatalogResult } from './fixtures'
 
 const NOW = Date.parse('2026-08-17T08:00:00Z')
-const ORIGIN = 'https://deepseek1024.com'
+const ORIGIN = 'https://plugins.company.example'
 
 function workerEnv(database: DatabaseSync): Env {
   return { CATALOG_DB: sqliteD1(database), COMMUNITY_ADMIN_LOGINS: '' } as unknown as Env
@@ -91,8 +91,8 @@ describe('community pages in the site’s SEO layer', () => {
   it('gives a post its own canonical, not the feed’s', () => {
     const seo = { updated: '', revision: '', plugins: catalog.plugins, categories: catalog.categories }
     expect(metadataForPath('/community/p/12', seo).canonical)
-      .toBe('https://deepseek1024.com/community/p/12')
+      .toBe('https://plugins.company.example/community/p/12')
     expect(metadataForPath('/community', seo).canonical)
-      .toBe('https://deepseek1024.com/community')
+      .toBe('https://plugins.company.example/community')
   })
 })

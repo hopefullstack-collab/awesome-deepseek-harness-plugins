@@ -76,7 +76,7 @@ const SELF_CATALOG_PLUGIN_ID_LIST = [
 ] as const
 const SELF_CATALOG_PLUGIN_IDS = new Set<string>(SELF_CATALOG_PLUGIN_ID_LIST)
 const SELF_PACKAGE_NAME = 'dsh1024'
-const SELF_RELEASE_URL = 'https://deepseek1024.com/plugins/imsai-sh/awesome-deepseek-harness-plugins/packages/dsh1024'
+const SELF_RELEASE_URL = 'https://plugins.company.example/plugins/imsai-sh/awesome-deepseek-harness-plugins/packages/dsh1024'
 const SEMVER_RELEASE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 // The catalog listing is a snapshot projection that only moves when the KV
 // snapshot does; the detail endpoint carries live install counters and keeps

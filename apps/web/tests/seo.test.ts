@@ -57,8 +57,8 @@ describe('SEO metadata', () => {
     const plugin = TEST_PLUGINS[0]!
     const detail = metadataForPath(`/plugins/${plugin.owner}/${plugin.repository}`, catalogPages)
 
-    expect(catalog.canonical).toBe('https://deepseek1024.com/plugins')
-    expect(home.canonical).toBe('https://deepseek1024.com/')
+    expect(catalog.canonical).toBe('https://plugins.company.example/plugins')
+    expect(home.canonical).toBe('https://plugins.company.example/')
     expect(rankings.canonical).toBe(home.canonical)
     expect(catalog.title).not.toBe(rankings.title)
     expect(detail.status).toBe(200)
@@ -107,11 +107,11 @@ describe('SEO metadata', () => {
     for (const path of paths) {
       const { schema } = metadataForPath(path, catalogPages)
       expect(danglingReferences(schema), `dangling @id on ${path}`).toEqual([])
-      expect(JSON.stringify(schema)).toContain('"@id":"https://deepseek1024.com/#website"')
+      expect(JSON.stringify(schema)).toContain('"@id":"https://plugins.company.example/#website"')
     }
 
     const website = JSON.stringify(metadataForPath('/', catalogPages).schema)
-    expect(website).toContain('"name":"DSH 1024Store"')
+    expect(website).toContain('"name":"Company Store"')
     expect(website).not.toContain('SearchAction')
     expect(website).not.toContain('search_term_string')
     expect(website).toContain('"DeepSeek Harness Plugin Store"')
@@ -166,7 +166,7 @@ describe('SEO metadata', () => {
 
     expect(page.status).toBe(503)
     expect(page.robots).toBe('index,follow')
-    expect(page.canonical).toBe('https://deepseek1024.com/plugins/acme/widget')
+    expect(page.canonical).toBe('https://plugins.company.example/plugins/acme/widget')
     expect(page.title).toContain('widget')
     expect(page.shell).toContain('temporarily unavailable')
   })
@@ -257,25 +257,25 @@ describe('crawler directives', () => {
     const urlCount = (sitemap.match(/<url>/g) ?? []).length
 
     expect(urlCount).toBe(TEST_PLUGINS.length + 3)
-    expect(sitemap).toContain('<loc>https://deepseek1024.com/</loc>')
-    expect(sitemap).toContain('<loc>https://deepseek1024.com/docs/api</loc>')
-    expect(sitemap).not.toContain('<loc>https://deepseek1024.com/rankings</loc>')
+    expect(sitemap).toContain('<loc>https://plugins.company.example/</loc>')
+    expect(sitemap).toContain('<loc>https://plugins.company.example/docs/api</loc>')
+    expect(sitemap).not.toContain('<loc>https://plugins.company.example/rankings</loc>')
     for (const plugin of TEST_PLUGINS) {
       // Subdirectory ids keep their path segments; each is encoded separately.
       const path = plugin.id.split('/').map(encodeURIComponent).join('/')
       expect(sitemap).toContain(`/plugins/${path}</loc>`)
     }
-    expect(sitemap).not.toContain('<loc>https://deepseek1024.com/plugin</loc>')
+    expect(sitemap).not.toContain('<loc>https://plugins.company.example/plugin</loc>')
     // The legacy detail route, not the literal segment: a monorepo plugin id
     // legitimately contains a `packages/` directory.
-    expect(sitemap).not.toContain('https://deepseek1024.com/packages/')
+    expect(sitemap).not.toContain('https://plugins.company.example/packages/')
 
     // Repository activity, not the catalog-entry date, is what actually changes
     // a detail page; a plugin with no push data falls back to `added`. Assert
     // the pairing, not the mere presence of a date somewhere in the document.
     const lastmodFor = (path: string) =>
       sitemap.match(
-        new RegExp(`<loc>https://deepseek1024\\.com${path.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&')}</loc>\\s*<lastmod>([^<]+)</lastmod>`),
+        new RegExp(`<loc>https://plugins\\.company\\.example${path.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&')}</loc>\\s*<lastmod>([^<]+)</lastmod>`),
       )?.[1]
 
     for (const plugin of TEST_PLUGINS) {
@@ -285,7 +285,7 @@ describe('crawler directives', () => {
     }
     // A static reference page with a fabricated lastmod trains crawlers to
     // ignore the field, so /docs/api ships without one.
-    expect(sitemap).toMatch(/<loc>https:\/\/deepseek1024\.com\/docs\/api<\/loc>\s*<\/url>/)
+    expect(sitemap).toMatch(/<loc>https:\/\/plugins\.company\.example\/docs\/api<\/loc>\s*<\/url>/)
   })
 
   it('lets crawlers read the API the pages are built from, and nothing else', () => {
@@ -296,7 +296,7 @@ describe('crawler directives', () => {
     expect(robots).toContain('Disallow: /api/v1/api-keys')
     expect(robots).toContain('Disallow: /api/v1/install-events')
     expect(robots).not.toMatch(/^Disallow: \/api\/$/m)
-    expect(robots).toContain('Sitemap: https://deepseek1024.com/sitemap.xml')
+    expect(robots).toContain('Sitemap: https://plugins.company.example/sitemap.xml')
     for (const agent of ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended']) {
       expect(robots).toContain(`User-agent: ${agent}`)
     }

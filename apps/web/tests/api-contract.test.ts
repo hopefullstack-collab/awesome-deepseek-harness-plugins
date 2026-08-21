@@ -135,7 +135,7 @@ describe('historical response contracts', () => {
     try {
       for (const fixture of json<BehaviorFixture[]>('fixtures/v1/default-behavior.golden.json')) {
         const response = await contractApp().request(
-          `https://deepseek1024.com${fixture.path}`,
+          `https://plugins.company.example${fixture.path}`,
           { method: fixture.method },
           fixture.environment === 'community' ? communityEnv : undefined,
         )
@@ -195,7 +195,7 @@ describe('historical response contracts', () => {
     const database = accountsDatabase()
     try {
       const response = await contractApp().request(
-        'https://deepseek1024.com/api/v1/plugins/search?q=gomoku',
+        'https://plugins.company.example/api/v1/plugins/search?q=gomoku',
         {},
         searchEnv(database),
       )
