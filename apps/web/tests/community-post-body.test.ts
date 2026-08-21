@@ -43,9 +43,9 @@ describe('extractPluginMentions', () => {
   })
 
   it('finds plugin detail links on the main site', () => {
-    expect(extractPluginMentions('see https://deepseek1024.com/plugins/acme/tool for details'))
+    expect(extractPluginMentions('see https://plugins.company.example/plugins/acme/tool for details'))
       .toEqual(['acme/tool'])
-    expect(extractPluginMentions('see https://www.deepseek1024.com/plugins/acme/tool'))
+    expect(extractPluginMentions('see https://www.plugins.company.example/plugins/acme/tool'))
       .toEqual(['acme/tool'])
   })
 

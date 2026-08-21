@@ -1,0 +1,68 @@
+{
+  "capturedAt": "2026-08-21T23:22:50Z",
+  "kind": "interim-cloudflared-quick-tunnel-recheck",
+  "durable": false,
+  "m1Complete": false,
+  "pinAllowed": false,
+  "pinRefuseReason": "scripts/pin-company-store-origin.sh refuses *.trycloudflare.com",
+  "note": "Anonymous GET over public HTTPS via cloudflared quick tunnel \u2192 wrangler dev --local. NOT durable. Do NOT pin desktop COMPANY_STORE_*. Prior excel-combo-… hostname died (UDP DNS outage); tunnel restarted. For laptop Market UI smoke use DSH_COMPANY_STORE_LOCAL_ENDPOINT=1 (loopback only).",
+  "publicHttpsOrigin": "https://mas-speeds-constitutional-cleared.trycloudflare.com",
+  "previousPublicHttpsOrigin": "https://excel-combo-increasingly-spots.trycloudflare.com",
+  "localOrigin": "http://127.0.0.1:8787",
+  "resolveMethod": "Local DoH DNS proxy on 127.0.0.1:53 (UDP DNS to 10.0.0.2 timed out)",
+  "health": {
+    "status": "ok"
+  },
+  "plugins": {
+    "keys": [
+      "categories",
+      "meta",
+      "packages",
+      "rankings"
+    ],
+    "packageCount": 3,
+    "meta": {
+      "total": 3,
+      "catalogTotal": 3,
+      "updated": "2026-08-21",
+      "generatedAt": "2026-08-21T19:27:34.645Z",
+      "revision": "sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f",
+      "source": "stale",
+      "metricCoverage": 0
+    },
+    "sampleNames": [
+      "dsh-crosstalk",
+      "dsh-find-plugin",
+      "dsh-restart"
+    ],
+    "sampleHasInstallMethods": [
+      true,
+      true,
+      true
+    ]
+  },
+  "anonymousGet": true,
+  "managedChallenge": false,
+  "httpStatus": {
+    "health": 200,
+    "plugins": 200
+  },
+  "tlsVia": "cloudflare (HTTP/1.1 via --http1.1, server: cloudflare, HSTS present)",
+  "tunnelProcessAlive": true,
+  "haConnections": 1,
+  "workersDevPreview": {
+    "url": "https://company-store-preview.adaptable-pint.workers.dev",
+    "dnsA": null,
+    "note": "temporary preview expired / no A record; prior Managed Challenge \u2014 not usable"
+  },
+  "cfAuth": {
+    "whoami": "not authenticated",
+    "newDeviceLoginPolls": "not started; existing keepalive interrupted/stopped"
+  },
+  "artifacts": [
+    "recheck-2026-08-21T23-04-03Z_api_v1_health.body",
+    "recheck-2026-08-21T23-04-03Z_api_v1_health.hdr",
+    "recheck-2026-08-21T23-04-03Z_api_v1_plugins_limit_5.body",
+    "recheck-2026-08-21T23-04-03Z_api_v1_plugins_limit_5.hdr"
+  ]
+}

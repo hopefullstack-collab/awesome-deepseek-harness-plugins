@@ -1,6 +1,7 @@
 import { consumeQuota, type QuotaLimits } from '../lib/api-quota'
 import { sanitizeReturnTo, timingSafeEqualStrings } from '../lib/auth'
 import { normalizePluginId, parsePluginId } from '../lib/plugin-id'
+import { isTopicDiscoveryEnabled, publishedPluginPredicate } from '../lib/site-config'
 import { Hono } from 'hono'
 import type { ApiError, CommunityStats, FeedResponse, ThreadResponse, Viewer } from './contract'
 import {
@@ -321,7 +322,7 @@ export function registerCommunityRoutes(
     const mentioned = extractPluginMentions(validated.body)
     const known = mentioned.length === 0
       ? []
-      : await knownPluginIds(context.env.CATALOG_DB, mentioned)
+      : await knownPluginIds(context.env.CATALOG_DB, mentioned, context.env)
 
     try {
       const post = await createPost(
@@ -433,16 +434,21 @@ export function registerCommunityRoutes(
 }
 
 /** The subset of the mentioned ids the catalog actually publishes. */
-async function knownPluginIds(db: D1Database, ids: readonly string[]): Promise<string[]> {
+async function knownPluginIds(
+  db: D1Database,
+  ids: readonly string[],
+  env?: { TOPIC_DISCOVERY_ENABLED?: string },
+): Promise<string[]> {
   const normalized = ids.filter((id) => parsePluginId(id) !== null).map(normalizePluginId)
   if (normalized.length === 0) return []
   const placeholders = normalized.map(() => '?').join(', ')
+  const includeTopic = isTopicDiscoveryEnabled(env)
   const { results } = await db.prepare(
     `SELECT cp.normalized_plugin_id
        FROM catalog_plugins cp
        JOIN catalog_repositories r ON r.id = cp.repository_id
       WHERE cp.normalized_plugin_id IN (${placeholders})
-        AND (cp.from_pr = 1 OR (r.from_topic = 1 AND cp.validation_status = 'accepted'))`,
+        AND ${publishedPluginPredicate(includeTopic).replace(/\bp\./g, 'cp.')}`,
   ).bind(...normalized).all<{ normalized_plugin_id: string }>()
   const found = new Set(results.map((row) => row.normalized_plugin_id))
   return ids.filter((id) => found.has(normalizePluginId(id)))

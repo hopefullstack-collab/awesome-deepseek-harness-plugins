@@ -77,11 +77,14 @@ export function seedPlugin(database: DatabaseSync, options: SeedPluginOptions): 
   database.prepare(
     `INSERT INTO catalog_plugins
        (repository_id, plugin_id, normalized_plugin_id, from_pr, curated_name, curated_category, validation_status)
-     VALUES (?, ?, ?, 0, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     repositoryId,
     options.pluginId,
     options.pluginId.toLowerCase(),
+    // Company fork publishes curated rows; topic-only fixtures still set
+    // from_topic=1 on the repository so both predicates can be exercised.
+    published ? 1 : 0,
     options.curatedName ?? null,
     options.category ?? null,
     published ? 'accepted' : 'rejected',

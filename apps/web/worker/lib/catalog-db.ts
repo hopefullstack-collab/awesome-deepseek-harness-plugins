@@ -10,6 +10,7 @@ import {
   pluginInstallCommand,
   pluginPathFromPackagePath,
 } from './plugin-id'
+import { publishedPluginPredicate } from './site-config'
 
 interface RepositoryIdentityRow {
   id: number
@@ -960,7 +961,12 @@ async function sha256(value: string): Promise<string> {
 export async function loadCatalogSnapshotFromD1(
   db: D1Database,
   now = new Date().toISOString(),
+  options: { includeTopicDiscoveries?: boolean } = {},
 ): Promise<StoredCatalogSnapshot | null> {
+  // Company fork default: curated `catalog/plugins/*.json` (from_pr) only.
+  // When topic discovery is re-enabled, accepted topic-scan plugins join the
+  // published snapshot the same way as upstream 1024Store.
+  const includeTopic = options.includeTopicDiscoveries === true
   // A repository with curated metadata contributes one plugin per metadata row
   // (a monorepo may contribute several); a topic-only repository contributes
   // exactly one plugin, located at its accepted manifest's directory.
@@ -978,8 +984,7 @@ export async function loadCatalogSnapshotFromD1(
             p.npm_downloads_7d, p.npm_downloads_start, p.npm_downloads_end
        FROM catalog_plugins p
        JOIN catalog_repositories r ON r.id = p.repository_id
-      WHERE p.from_pr = 1
-         OR (r.from_topic = 1 AND p.validation_status = 'accepted')
+      WHERE ${publishedPluginPredicate(includeTopic)}
       ORDER BY r.normalized_full_name, p.plugin_path`,
   ).all<CatalogRow>()
   if (result.results.length === 0) return null
@@ -1129,8 +1134,10 @@ export async function saveNpmDownloadResults(
 
 // A package is probed only when it is published here AND its own manifest named
 // the package — the name comes from the repository, never from a guess.
-const NPM_PROBE_ELIGIBLE = `p.package_name IS NOT NULL
-        AND (p.from_pr = 1 OR (r.from_topic = 1 AND p.validation_status = 'accepted'))`
+function npmProbeEligible(includeTopicDiscoveries: boolean): string {
+  return `p.package_name IS NOT NULL
+        AND ${publishedPluginPredicate(includeTopicDiscoveries)}`
+}
 
 interface NpmProbeCandidateRow {
   plugin_id: string
@@ -1167,13 +1174,15 @@ function toNpmProbeCandidate(row: NpmProbeCandidateRow): NpmProbeCandidate {
 export async function loadNpmPendingProbes(
   db: D1Database,
   limit = 200,
+  options: { includeTopicDiscoveries?: boolean } = {},
 ): Promise<NpmProbeCandidate[]> {
+  const includeTopic = options.includeTopicDiscoveries === true
   const result = await db.prepare(
     `SELECT p.plugin_id, p.package_name, p.npm_package_name, p.npm_binding, p.npm_etag, p.npm_status, p.normalized_plugin_id,
             p.npm_bundle_declared, p.npm_downloads_checked_at
        FROM catalog_plugins p
        JOIN catalog_repositories r ON r.id = p.repository_id
-      WHERE ${NPM_PROBE_ELIGIBLE}
+      WHERE ${npmProbeEligible(includeTopic)}
         AND p.npm_status = 'pending'
       ORDER BY p.normalized_plugin_id
       LIMIT ?`,
@@ -1196,13 +1205,15 @@ export async function loadNpmSweepBatch(
   db: D1Database,
   limit: number,
   cursor = '',
+  options: { includeTopicDiscoveries?: boolean } = {},
 ): Promise<NpmProbeCandidate[]> {
+  const includeTopic = options.includeTopicDiscoveries === true
   const result = await db.prepare(
     `SELECT p.plugin_id, p.package_name, p.npm_package_name, p.npm_binding, p.npm_etag, p.npm_status, p.normalized_plugin_id,
             p.npm_bundle_declared, p.npm_downloads_checked_at
        FROM catalog_plugins p
        JOIN catalog_repositories r ON r.id = p.repository_id
-      WHERE ${NPM_PROBE_ELIGIBLE}
+      WHERE ${npmProbeEligible(includeTopic)}
         AND p.normalized_plugin_id > ?
       ORDER BY p.normalized_plugin_id
       LIMIT ?`,
@@ -1438,13 +1449,15 @@ export async function loadClassificationQueue(
   db: D1Database,
   classifierVersion: string,
   limit: number,
+  options: { includeTopicDiscoveries?: boolean } = {},
 ): Promise<ClassificationCandidate[]> {
+  const includeTopic = options.includeTopicDiscoveries === true
   const result = await db.prepare(
     `SELECT p.repository_id, p.plugin_path, p.plugin_id, p.package_name,
             r.repository_name, r.github_description, r.stars
        FROM catalog_plugins p
        JOIN catalog_repositories r ON r.id = p.repository_id
-      WHERE (p.from_pr = 1 OR (r.from_topic = 1 AND p.validation_status = 'accepted'))
+      WHERE ${publishedPluginPredicate(includeTopic)}
         AND p.curated_category IS NULL
         AND (p.ai_classifier_version IS NULL OR p.ai_classifier_version <> ?)
       ORDER BY r.stars DESC, p.plugin_id

@@ -42,7 +42,7 @@ export function validatePostBody(value: unknown, maximum = MAX_POST_LENGTH): Pos
 const FENCED_CODE = /```[\s\S]*?(?:```|$)/g
 const INLINE_CODE = /`[^`\n]*`/g
 const MENTION = /@([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+)/g
-const DETAIL_URL = /https?:\/\/(?:www\.)?deepseek1024\.com\/plugins\/([A-Za-z0-9_./-]+)/g
+const DETAIL_URL = /https?:\/\/(?:www\.)?plugins\.company\.example\/plugins\/([A-Za-z0-9_./-]+)/g
 
 /**
  * Plugin ids mentioned in the body, in order of appearance, deduplicated by

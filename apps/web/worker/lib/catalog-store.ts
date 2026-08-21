@@ -10,6 +10,7 @@ import { loadCatalogSnapshotFromD1, saveCatalogMetrics } from './catalog-db'
 import { fetchGitHubMetrics, metricKey } from './github-metrics'
 import { normalizePluginId } from './plugin-id'
 import { emptyInstallMetrics, loadInstallMetrics } from './install-metrics'
+import { isTopicDiscoveryEnabled } from './site-config'
 import { updateStarHistory } from './star-history'
 
 // v10 drops npm download metrics from repositories that do not own the
@@ -151,7 +152,9 @@ export async function refreshCatalogSnapshot(
   if (env.CATALOG_DB) {
     try {
       const generatedAt = new Date(capturedAt).toISOString()
-      const d1Snapshot = await loadCatalogSnapshotFromD1(env.CATALOG_DB, generatedAt)
+      const d1Snapshot = await loadCatalogSnapshotFromD1(env.CATALOG_DB, generatedAt, {
+        includeTopicDiscoveries: isTopicDiscoveryEnabled(env),
+      })
       if (d1Snapshot) {
         const token = env.GITHUB_TOKEN?.trim() || undefined
         const metrics = await fetchGitHubMetrics(d1Snapshot.plugins, token, fetcher)

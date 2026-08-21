@@ -145,6 +145,7 @@ describe('plugin discovery task', () => {
     const env = {
       CATALOG_DB: sqliteD1(database),
       GITHUB_TOKEN: 'token',
+      TOPIC_DISCOVERY_ENABLED: '1',
     } as unknown as Env
 
     const result = await runPluginDiscoveryTask(env, 'full', SCHEDULED_AT)
@@ -175,6 +176,7 @@ describe('plugin discovery task', () => {
     const env = {
       CATALOG_DB: sqliteD1(database),
       GITHUB_TOKEN: 'token',
+      TOPIC_DISCOVERY_ENABLED: '1',
     } as unknown as Env
 
     const first = await runPluginDiscoveryTask(env, 'full', SCHEDULED_AT)

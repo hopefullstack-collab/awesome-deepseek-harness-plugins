@@ -1,0 +1,12 @@
+{
+  "$schema": "../../catalog/schema/plugin.schema.json",
+  "id": "company-example/sample-reviewed-plugin",
+  "name": "sample-reviewed-plugin",
+  "repository": "https://github.com/company-example/sample-reviewed-plugin",
+  "category": "tools",
+  "description": {
+    "en": "Sample company-reviewed catalog entry for Company Store forks. Copy into catalog/plugins/ after the real repository exists. Listing means inclusion only — not a security audit.",
+    "zh": "公司目录示例条目（公司插件目录）。仓库就绪后复制到 catalog/plugins/。收录≠安全审核。"
+  },
+  "added": "2026-08-21"
+}

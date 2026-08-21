@@ -1,0 +1,28 @@
+{
+  "keys": [
+    "categories",
+    "meta",
+    "packages",
+    "rankings"
+  ],
+  "packageCount": 3,
+  "meta": {
+    "total": 3,
+    "catalogTotal": 3,
+    "updated": "2026-08-21",
+    "generatedAt": "2026-08-21T19:27:34.645Z",
+    "revision": "sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f",
+    "source": "stale",
+    "metricCoverage": 0
+  },
+  "sampleNames": [
+    "dsh-crosstalk",
+    "dsh-find-plugin",
+    "dsh-restart"
+  ],
+  "sampleHasInstallMethods": [
+    true,
+    true,
+    true
+  ]
+}

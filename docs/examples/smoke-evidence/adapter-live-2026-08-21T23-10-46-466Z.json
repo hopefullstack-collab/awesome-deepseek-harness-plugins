@@ -1,0 +1,22 @@
+{
+  "capturedAt": "2026-08-21T23:10:46.465Z",
+  "kind": "company-store-adapter-live-wire",
+  "origin": "https://excel-combo-increasingly-spots.trycloudflare.com",
+  "marketPath": "/tmp/desktop-fork/dsh-community-market",
+  "packageCount": 3,
+  "parsed": {
+    "itemCount": 3,
+    "browseOnlyCount": 3,
+    "githubRepoCount": 3,
+    "npmCount": 0,
+    "sampleIds": [
+      "Jesse-njx/dsh-crosstalk",
+      "awesome-dsh-plugin/dsh-find-plugin",
+      "anweat/dsh-restart"
+    ],
+    "providerId": "com.company.store.catalog",
+    "adapterId": "market.company-store-v1"
+  },
+  "pass": true,
+  "note": "Parser fed live Market JSON via stub HTTP client. Does not pin COMPANY_STORE_* and does not use trycloudflare as production endpoint."
+}

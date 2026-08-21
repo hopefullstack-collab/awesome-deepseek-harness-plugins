@@ -418,7 +418,9 @@ describe('catalog snapshot', () => {
       curatedEntry({ id: 'Owner/mono/packages/foo', name: 'foo', repository: 'https://github.com/Owner/mono' }),
     ], NOW)
 
-    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW)
+    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW, {
+      includeTopicDiscoveries: true,
+    })
 
     // The rejected discovery is absent; the nested one installs from its own
     // directory instead of a repository root that has no bundle.
@@ -430,6 +432,24 @@ describe('catalog snapshot', () => {
       'dsh plugin --profile web add github:Owner/mono#path:packages/foo',
       'dsh plugin --profile web add github:Scan/Nested#path:packages/deep',
     ])
+    database.close()
+  })
+
+  it('company fork default publishes curated catalog entries only', async () => {
+    const database = catalogDatabase()
+    seedRepository(database, {
+      github_id: 7, full_name: 'Scan/Nested', normalized_full_name: 'scan/nested', repository_name: 'Nested',
+    })
+    seedPlugin(database, 'scan/nested', {
+      plugin_path: 'packages/deep', manifest_path: 'packages/deep/package.json', validation_status: 'accepted',
+    })
+    await syncCuratedEntries(sqliteD1(database), [
+      curatedEntry({ id: 'Owner/mono/packages/foo', name: 'foo', repository: 'https://github.com/Owner/mono' }),
+    ], NOW)
+
+    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW)
+
+    expect(snapshot?.plugins.map((plugin) => plugin.id)).toEqual(['Owner/mono/packages/foo'])
     database.close()
   })
 
@@ -445,7 +465,9 @@ describe('catalog snapshot', () => {
       curatedEntry({ id: 'Owner/both', name: '人工命名', repository: 'https://github.com/Owner/both' }),
     ], NOW)
 
-    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW)
+    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW, {
+      includeTopicDiscoveries: true,
+    })
 
     expect(snapshot?.plugins[0]).toMatchObject({
       name: '人工命名',
@@ -461,7 +483,9 @@ describe('catalog snapshot', () => {
     database.prepare("UPDATE catalog_repositories SET github_description = ? WHERE normalized_full_name = 'scan/repo'")
       .run('GitHub blurb')
 
-    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW)
+    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW, {
+      includeTopicDiscoveries: true,
+    })
 
     expect(snapshot?.plugins[0]).toMatchObject({
       id: 'Scan/Repo',
@@ -488,7 +512,9 @@ describe('catalog snapshot', () => {
        WHERE normalized_plugin_id = 'scan/repo'
     `).run()
 
-    const plugin = (await loadCatalogSnapshotFromD1(sqliteD1(database), NOW))?.plugins[0]
+    const plugin = (await loadCatalogSnapshotFromD1(sqliteD1(database), NOW, {
+      includeTopicDiscoveries: true,
+    }))?.plugins[0]
 
     expect(plugin?.install).toBe('dsh plugin --profile web add @scope/published-plugin')
     expect(plugin?.installMethods?.map((method) => method.kind)).toEqual(['npm', 'github'])
@@ -880,7 +906,9 @@ describe('monorepo plugin naming', () => {
       ],
     })], NOW)
 
-    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW)
+    const snapshot = await loadCatalogSnapshotFromD1(sqliteD1(database), NOW, {
+      includeTopicDiscoveries: true,
+    })
 
     // Both used to be published as "Repo", one indistinguishable row per package.
     expect(snapshot?.plugins.map((plugin) => [plugin.id, plugin.name])).toEqual([

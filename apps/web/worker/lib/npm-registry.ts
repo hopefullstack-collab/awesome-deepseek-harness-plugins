@@ -11,7 +11,7 @@ import { classifyNpmBinding, type NpmBinding } from './install-methods'
 
 const REGISTRY_ORIGIN = 'https://registry.npmjs.org'
 const REQUEST_TIMEOUT_MS = 10_000
-const USER_AGENT = 'dsh-1024store-catalog-verification (+https://deepseek1024.com)'
+const USER_AGENT = 'dsh-1024store-catalog-verification (+https://plugins.company.example)'
 
 export interface NpmProbeResult {
   // `not_modified` is the conditional-request answer: the package has not

@@ -1,0 +1,22 @@
+HTTP/1.1 200 OK
+Date: Fri, 21 Aug 2026 23:04:04 GMT
+Content-Type: application/json
+Transfer-Encoding: chunked
+Connection: keep-alive
+CF-Ray: a2ed464e9c1beedd-PDX
+CF-Cache-Status: DYNAMIC
+Access-Control-Allow-Origin: *
+x-xss-protection: 0
+Server: cloudflare
+Strict-Transport-Security: max-age=15552000; includeSubDomains
+Vary: accept-encoding
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: same-origin
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+

@@ -32,6 +32,7 @@ import {
   type NpmProbeRecord,
 } from './catalog-db'
 import { refreshCatalogSnapshot } from './catalog-store'
+import { isTopicDiscoveryEnabled } from './site-config'
 import { probeNpmPackage } from './npm-registry'
 import { fetchNpmDownloads7d } from './npm-downloads'
 
@@ -77,13 +78,15 @@ export async function runNpmRefreshTask(
   const now = new Date(scheduledTime).toISOString()
   const cursor = (await getCatalogState(env.CATALOG_DB, CURSOR_KEY)) ?? ''
 
+  const topicOpts = { includeTopicDiscoveries: isTopicDiscoveryEnabled(env) }
   const pending = await loadNpmPendingProbes(
     env.CATALOG_DB,
     Math.min(NPM_REFRESH_PENDING_CAP, NPM_REFRESH_BUDGET),
+    topicOpts,
   )
   const sweepLimit = Math.max(0, NPM_REFRESH_BUDGET - pending.length)
   const sweep = sweepLimit > 0
-    ? await loadNpmSweepBatch(env.CATALOG_DB, sweepLimit, cursor)
+    ? await loadNpmSweepBatch(env.CATALOG_DB, sweepLimit, cursor, topicOpts)
     : []
 
   // A pending row can also fall inside the sweep range; probe each once.

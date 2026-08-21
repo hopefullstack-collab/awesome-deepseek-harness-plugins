@@ -27,3 +27,11 @@ A breaking change gets a new versioned route. Keep the previous version and its
 contracts until an explicit, documented deprecation period has completed. Never
 make a failing contract check green by casually rewriting a historical schema or
 golden fixture: those files require API-owner review.
+
+## Company fork
+
+The company Store fork keeps the same `/api/v1/*` wire contracts and goldens.
+Company-specific invariants (placeholder hosts, `TOPIC_DISCOVERY_ENABLED=0`,
+`from_pr`-only publication, Market built-in key `company-store`) live in
+`apps/web/tests/company-fork-invariants.test.ts` and must stay green alongside
+`npm run test:api-contract`. Do not fork schemas for branding alone.

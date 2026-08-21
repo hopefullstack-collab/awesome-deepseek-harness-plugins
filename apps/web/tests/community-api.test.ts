@@ -7,7 +7,7 @@ import { communityApp, communityDatabase, seedPlugin, sqliteD1 } from './communi
 import type { FeedResponse, Post, ThreadResponse } from '../worker/community/contract'
 
 const NOW = Date.parse('2026-08-17T08:00:00Z')
-const ORIGIN = 'https://community.deepseek1024.com'
+const ORIGIN = 'https://community.plugins.company.example'
 
 function env(database: DatabaseSync, adminLogins = ''): Env {
   return {
@@ -141,7 +141,7 @@ describe('plugin mentions', () => {
       owner: 'acme',
       category: 'workflow',
       stars: 128,
-      url: 'https://deepseek1024.com/plugins/acme/tool',
+      url: 'https://plugins.company.example/plugins/acme/tool',
     }])
     database.close()
   })

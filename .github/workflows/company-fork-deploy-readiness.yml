@@ -1,0 +1,40 @@
+# Gates company-fork deploy readiness on every PR and push.
+# Does not publish to Cloudflare (credentials are never in CI).
+# Proves M1 wire acceptance against a listening local origin.
+name: Company fork deploy readiness
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'cursor/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: company-fork-ready-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Company fork invariants + API contract
+        run: |
+          npm run test:api-contract
+          npm run test --workspace @dsh-1024store/web -- tests/company-fork-invariants.test.ts
+        env:
+          GITHUB_TOKEN: ci-typecheck-placeholder
+      - name: Deploy workflow dry-run (no Cloudflare)
+        run: npm run check:company-deploy-workflow
+      - name: Listening origin smoke (GET /api/v1/plugins)
+        run: npm run smoke:company-plugins-api
+        env:
+          SMOKE_TIMEOUT_MS: '300000'

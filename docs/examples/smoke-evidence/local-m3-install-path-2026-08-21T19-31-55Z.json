@@ -1,0 +1,63 @@
+{
+  "capturedAt": "2026-08-21T19-31-55Z",
+  "origin": "http://127.0.0.1:8787",
+  "durable": false,
+  "kind": "local-m3-browse-installable-structure",
+  "health": {
+    "status": "ok"
+  },
+  "registryName": "dsh-1024store-catalog",
+  "registryCount": 3,
+  "packages": 3,
+  "meta": {
+    "total": 3,
+    "catalogTotal": 3,
+    "updated": "2026-08-21",
+    "generatedAt": "2026-08-21T17:41:07.846Z",
+    "revision": "sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f",
+    "source": "stale",
+    "metricCoverage": 0
+  },
+  "rows": [
+    {
+      "id": "Jesse-njx/dsh-crosstalk",
+      "name": "dsh-crosstalk",
+      "installMethodsKinds": [
+        "github"
+      ],
+      "class": "browse_only",
+      "hasIdentity": true
+    },
+    {
+      "id": "awesome-dsh-plugin/dsh-find-plugin",
+      "name": "dsh-find-plugin",
+      "installMethodsKinds": [
+        "github"
+      ],
+      "class": "browse_only",
+      "hasIdentity": true
+    },
+    {
+      "id": "anweat/dsh-restart",
+      "name": "dsh-restart",
+      "installMethodsKinds": [
+        "github"
+      ],
+      "class": "browse_only",
+      "hasIdentity": true
+    }
+  ],
+  "installableCount": 0,
+  "browseOnlyCount": 3,
+  "fixtureInstallableCount": 3,
+  "fixtureBrowseOnlyCount": 0,
+  "fixturePath": "docs/ai-buddy-stage2/patch/fixtures/plugins-api.installable.json",
+  "classification": "Fail-closed: exactly one verified npm target after aliasing published_package ↔ repository_backlink (same spec+revision).",
+  "e2eScript": "scripts/company-fork-e2e-install-check.mjs --base-url http://127.0.0.1:8787",
+  "e2eResult": "PASS (browse-only live rows; fixture proves installable wire)",
+  "notes": [
+    "Live local catalog is browse-only (github methods) until public npm probe on durable deploy.",
+    "Installable wire shape is proven by adapter fixture (not invented private npm).",
+    "Do not pin desktop COMPANY_STORE_* to localhost."
+  ]
+}

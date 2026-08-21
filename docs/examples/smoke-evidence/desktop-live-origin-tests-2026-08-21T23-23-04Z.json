@@ -1,0 +1,67 @@
+{
+  "capturedAt": "2026-08-21T23:23:04.9182Z",
+  "kind": "desktop-company-store-tests-vs-live-origin",
+  "interimOrigin": "https://mas-speeds-constitutional-cleared.trycloudflare.com",
+  "marketPath": "/tmp/desktop-fork/dsh-community-market",
+  "overrideProbe": [
+    {
+      "input": null,
+      "ok": true,
+      "endpoint": "https://plugins.company.example/api/v1/plugins",
+      "hostname": "plugins.company.example",
+      "localDev": false
+    },
+    {
+      "input": "1",
+      "ok": true,
+      "endpoint": "http://127.0.0.1:8787/api/v1/plugins",
+      "hostname": "127.0.0.1",
+      "localDev": true
+    },
+    {
+      "input": "http://127.0.0.1:8787/api/v1/plugins",
+      "ok": true,
+      "endpoint": "http://127.0.0.1:8787/api/v1/plugins",
+      "hostname": "127.0.0.1",
+      "localDev": true
+    },
+    {
+      "input": "https://mas-speeds-constitutional-cleared.trycloudflare.com/api/v1/plugins",
+      "ok": false,
+      "error": "DSH_COMPANY_STORE_LOCAL_ENDPOINT allows only http://127.0.0.1[:port]/path (no credentials)"
+    }
+  ],
+  "note": "DSH_COMPANY_STORE_LOCAL_ENDPOINT rejects non-loopback/HTTPS trycloudflare. Live HTTPS covered by verify:company-store-adapter-live (stub HTTP + live JSON). Vitest adapter/host specs run without live override.",
+  "vitest": {
+    "command": "yarn vitest run tests/company-store-adapter.spec.ts tests/company-store-host-routes.spec.ts",
+    "env": {
+      "DSH_COMPANY_STORE_LOCAL_ENDPOINT": null
+    },
+    "pass": true,
+    "files": 2,
+    "tests": 10,
+    "failed": 0,
+    "logExcerpt": [
+      "RUN  v4.1.8 /tmp/desktop-fork/dsh-community-market",
+      "",
+      "",
+      " Test Files  2 passed (2)",
+      "      Tests  10 passed (10)",
+      "   Start at  23:15:55",
+      "   Duration  784ms (transform 460ms, setup 105ms, import 943ms, tests 70ms, environment 0ms)"
+    ]
+  },
+  "withLocalOverrideEnvPollution": {
+    "env": {
+      "DSH_COMPANY_STORE_LOCAL_ENDPOINT": "1"
+    },
+    "pass": false,
+    "note": "Module-level COMPANY_STORE_* constants resolve at import to loopback; adapter snapshot contract requires https finalUrl \u2014 expected FAIL when env set during vitest. Do not use this mode for unit specs."
+  },
+  "adapterLiveWire": {
+    "script": "npm run verify:company-store-adapter-live",
+    "pass": true,
+    "artifact": "adapter-live-2026-08-21T23-22-52-701Z.json"
+  },
+  "productionPin": false
+}

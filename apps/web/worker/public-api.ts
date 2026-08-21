@@ -1,11 +1,17 @@
 import { buildApiHostRobotsTxt, SITE_ORIGIN } from './seo'
+import {
+  DEFAULT_PUBLIC_API_HOST,
+  DEFAULT_WWW_HOST,
+} from './lib/site-config'
 
 /**
  * Public developer-API host. Only the search API (and its health probe) is
  * exposed here, under the shorter /v1/ prefix; everything else on this host
  * is a 404. Sign-in, key management, and the website stay on the main site.
+ *
+ * Company fork placeholder — replace DEFAULT_PUBLIC_API_HOST before deploy.
  */
-export const PUBLIC_API_HOST = 'api.deepseek1024.com'
+export const PUBLIC_API_HOST = DEFAULT_PUBLIC_API_HOST
 
 export const PUBLIC_API_PATHS: Readonly<Record<string, string>> = {
   '/v1/plugins/search': '/api/v1/plugins/search',
@@ -28,7 +34,7 @@ export function rewritePublicApiUrl(url: URL): URL | null {
   return rewritten
 }
 
-export const WWW_HOST = 'www.deepseek1024.com'
+export const WWW_HOST = DEFAULT_WWW_HOST
 
 /** www is a bound custom domain that permanently redirects to the apex site. */
 export function wwwRedirect(url: URL): Response | null {

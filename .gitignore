@@ -16,3 +16,6 @@ test-results/
 .playwright-cli/
 output/playwright/
 .DS_Store
+
+# Laptop deploy script backups of wrangler placeholders
+apps/web/wrangler.jsonc.laptop-deploy.bak.*

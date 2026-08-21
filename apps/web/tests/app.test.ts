@@ -128,12 +128,12 @@ describe('market API', () => {
 
     expect(root.status).toBe(404)
     expect(root.headers.get('Location')).toBeNull()
-    expect(await robots.text()).toContain('Sitemap: https://deepseek1024.com/sitemap.xml')
+    expect(await robots.text()).toContain('Sitemap: https://plugins.company.example/sitemap.xml')
     expect(sitemap.headers.get('Content-Type')).toContain('application/xml')
     // Catalog-derived, so it must revalidate rather than sit a day behind.
     expect(sitemap.headers.get('Cache-Control')).toContain('stale-while-revalidate=')
     const sitemapBody = await sitemap.text()
-    expect(sitemapBody).toContain('<loc>https://deepseek1024.com/plugins</loc>')
+    expect(sitemapBody).toContain('<loc>https://plugins.company.example/plugins</loc>')
     expect((sitemapBody.match(/<url>/g) ?? []).length).toBe(TEST_PLUGINS.length + 3)
   })
 
@@ -613,7 +613,7 @@ describe('market API', () => {
     await expect(response.json()).resolves.toEqual({
       package: 'dsh1024',
       version: '4.5.6',
-      releaseUrl: 'https://deepseek1024.com/plugins/imsai-sh/awesome-deepseek-harness-plugins/packages/dsh1024',
+      releaseUrl: 'https://plugins.company.example/plugins/imsai-sh/awesome-deepseek-harness-plugins/packages/dsh1024',
       checkedAt: '2026-08-20T08:00:00Z',
     })
   })
@@ -649,7 +649,7 @@ describe('market API', () => {
     await expect(response.json()).resolves.toEqual({
       package: 'dsh1024',
       version: '4.5.6',
-      releaseUrl: 'https://deepseek1024.com/plugins/imsai-sh/awesome-deepseek-harness-plugins/packages/dsh1024',
+      releaseUrl: 'https://plugins.company.example/plugins/imsai-sh/awesome-deepseek-harness-plugins/packages/dsh1024',
       checkedAt: '2026-08-20T08:00:00Z',
     })
   })
@@ -1015,17 +1015,17 @@ describe('collection query classification', () => {
   it('separates filters, which change the page, from tags, which do not', () => {
     const kind = (href: string) => collectionQueryKind(new URL(href))
 
-    expect(kind('https://deepseek1024.com/')).toBe('clean')
+    expect(kind('https://plugins.company.example/')).toBe('clean')
     // An empty filter renders the unfiltered page, so it canonicalises to it
     // rather than being noindexed as a permutation.
-    expect(kind('https://deepseek1024.com/plugins?q=')).not.toBe('filtered')
-    expect(kind('https://deepseek1024.com/plugins?q=theme')).toBe('filtered')
-    expect(kind('https://deepseek1024.com/plugins?category=ui')).toBe('filtered')
+    expect(kind('https://plugins.company.example/plugins?q=')).not.toBe('filtered')
+    expect(kind('https://plugins.company.example/plugins?q=theme')).toBe('filtered')
+    expect(kind('https://plugins.company.example/plugins?category=ui')).toBe('filtered')
     // A campaign tag serves the same page: noindexing it would throw away every
     // shared link instead of consolidating it onto the clean URL.
-    expect(kind('https://deepseek1024.com/?utm_source=newsletter')).toBe('tagged')
-    expect(kind('https://deepseek1024.com/?fbclid=abc')).toBe('tagged')
-    expect(kind('https://deepseek1024.com/plugins/acme/widget?utm_source=x')).toBe('clean')
+    expect(kind('https://plugins.company.example/?utm_source=newsletter')).toBe('tagged')
+    expect(kind('https://plugins.company.example/?fbclid=abc')).toBe('tagged')
+    expect(kind('https://plugins.company.example/plugins/acme/widget?utm_source=x')).toBe('clean')
   })
 
 })
@@ -1033,29 +1033,29 @@ describe('collection query classification', () => {
 describe('catalog listing validator', () => {
   it('lets a poller be answered with 304 instead of another megabyte', async () => {
     const app = testApp()
-    const first = await app.request('https://deepseek1024.com/api/v1/plugins')
+    const first = await app.request('https://plugins.company.example/api/v1/plugins')
     const etag = first.headers.get('ETag')
     expect(etag).toMatch(/^W\/"/)
 
     // The same snapshot and the same query have to produce the same validator,
     // or every poll looks like a change and the 304 never fires.
-    const second = await app.request('https://deepseek1024.com/api/v1/plugins')
+    const second = await app.request('https://plugins.company.example/api/v1/plugins')
     expect(second.headers.get('ETag')).toBe(etag)
 
     // A different query is a different body and must not reuse it.
-    const filtered = await app.request('https://deepseek1024.com/api/v1/plugins?sort=newest')
+    const filtered = await app.request('https://plugins.company.example/api/v1/plugins?sort=newest')
     expect(filtered.headers.get('ETag')).not.toBe(etag)
   })
 
   it('gives the registry projection its own validator', async () => {
-    const registry = await testApp().request('https://deepseek1024.com/api/v1/registry')
+    const registry = await testApp().request('https://plugins.company.example/api/v1/registry')
     expect(registry.headers.get('ETag')).toMatch(/^W\/"/)
   })
 })
 
 describe('v2 endpoints', () => {
   it('serves a directory page with pagination metadata and a content validator', async () => {
-    const response = await testApp().request('https://deepseek1024.com/api/v2/plugins?limit=1')
+    const response = await testApp().request('https://plugins.company.example/api/v2/plugins?limit=1')
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toContain('application/json')
     expect(response.headers.get('ETag')).toMatch(/^W\/"/)
@@ -1069,13 +1069,13 @@ describe('v2 endpoints', () => {
 
   it('gives a different page a different validator', async () => {
     const app = testApp()
-    const p1 = await app.request('https://deepseek1024.com/api/v2/plugins?limit=1&page=1')
-    const p2 = await app.request('https://deepseek1024.com/api/v2/plugins?limit=1&page=2')
+    const p1 = await app.request('https://plugins.company.example/api/v2/plugins?limit=1&page=1')
+    const p2 = await app.request('https://plugins.company.example/api/v2/plugins?limit=1&page=2')
     expect(p1.headers.get('ETag')).not.toBe(p2.headers.get('ETag'))
   })
 
   it('serves the rankings boards with their sibling groups', async () => {
-    const response = await testApp().request('https://deepseek1024.com/api/v2/rankings')
+    const response = await testApp().request('https://plugins.company.example/api/v2/rankings')
     expect(response.status).toBe(200)
     expect(response.headers.get('ETag')).toMatch(/^W\/"/)
     const body = await response.json() as { rankings: Record<string, unknown[]>; siblingsByRepository: Record<string, unknown> }
@@ -1087,8 +1087,8 @@ describe('v2 endpoints', () => {
 describe('v3 endpoints', () => {
   it('serves npm downloads separately from the compatible v2 boards', async () => {
     const app = testApp()
-    const v2 = await app.request('https://deepseek1024.com/api/v2/rankings')
-    const v3 = await app.request('https://deepseek1024.com/api/v3/rankings')
+    const v2 = await app.request('https://plugins.company.example/api/v2/rankings')
+    const v3 = await app.request('https://plugins.company.example/api/v3/rankings')
     const v2Body = await v2.json() as { rankings: Record<string, unknown[]> }
     const v3Body = await v3.json() as { rankings: Record<string, unknown[]> }
 

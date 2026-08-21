@@ -21,6 +21,7 @@ import {
   inspectRepository,
   selectDiscoveryMode,
 } from './github-discovery'
+import { isTopicDiscoveryEnabled } from './site-config'
 
 const DEFAULT_TOPIC = 'dsh-plugin'
 const DISCOVERY_CHUNK_SIZE = 40
@@ -95,17 +96,21 @@ export async function runPluginDiscoveryTask(
     await startScanRun(env.CATALOG_DB, runId, mode, end)
 
     const client = createGitHubClient(env.GITHUB_TOKEN.trim())
-    const repositories = await withRetry(() => discoverRepositories(
-      client,
-      DEFAULT_TOPIC,
-      mode,
-      mode === 'full' ? null : incrementalStart(watermark as string),
-      end,
-    ))
-    counters.discovered = repositories.length
-    for (const group of chunks(repositories, DISCOVERY_CHUNK_SIZE)) {
-      const result = await upsertDiscoveredRepositories(env.CATALOG_DB, group, runId, end)
-      counters.changed += result.changedCount
+    // Company fork: TOPIC_DISCOVERY_ENABLED defaults OFF — skip the GitHub
+    // topic whole-network scan. Curated catalog entries still hydrate + validate.
+    if (isTopicDiscoveryEnabled(env)) {
+      const repositories = await withRetry(() => discoverRepositories(
+        client,
+        DEFAULT_TOPIC,
+        mode,
+        mode === 'full' ? null : incrementalStart(watermark as string),
+        end,
+      ))
+      counters.discovered = repositories.length
+      for (const group of chunks(repositories, DISCOVERY_CHUNK_SIZE)) {
+        const result = await upsertDiscoveredRepositories(env.CATALOG_DB, group, runId, end)
+        counters.changed += result.changedCount
+      }
     }
 
     // Submissions arrive with a name only, so their repositories need their
@@ -170,7 +175,9 @@ export async function runPluginDiscoveryTask(
     // npm version probing is a separate concern on its own cron
     // (`npm-refresh-task`), so the crawl no longer waits on the registry.
 
-    if (mode === 'full') await markMissingTopicRepositories(env.CATALOG_DB, runId, end)
+    if (mode === 'full' && isTopicDiscoveryEnabled(env)) {
+      await markMissingTopicRepositories(env.CATALOG_DB, runId, end)
+    }
     await setCatalogState(env.CATALOG_DB, 'discovery_watermark', end, end)
     if (mode === 'full') {
       await setCatalogState(

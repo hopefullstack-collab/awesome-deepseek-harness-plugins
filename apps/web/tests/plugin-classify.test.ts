@@ -159,7 +159,7 @@ describe('loadClassificationQueue', () => {
     seedRepository(database, 2, 'owner/discovered')
     seedPlugin(database, 2, 'owner/discovered')
 
-    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10)
+    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10, { includeTopicDiscoveries: true })
     expect(queue.map((entry) => entry.pluginId)).toEqual(['owner/discovered'])
   })
 
@@ -167,7 +167,7 @@ describe('loadClassificationQueue', () => {
     // from_pr without curated columns: published, but nobody wrote a category.
     seedRepository(database, 1, 'owner/submitted')
     seedPlugin(database, 1, 'owner/submitted', { fromPr: true })
-    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10)
+    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10, { includeTopicDiscoveries: true })
     expect(queue).toHaveLength(1)
   })
 
@@ -180,8 +180,8 @@ describe('loadClassificationQueue', () => {
       descriptionEn: 'en.', descriptionZh: '中文。', descriptionOrigin: 'generated',
     }], CLASSIFIER_VERSION)
 
-    expect(await loadClassificationQueue(db, CLASSIFIER_VERSION, 10)).toHaveLength(0)
-    expect(await loadClassificationQueue(db, 'v2-next', 10)).toHaveLength(1)
+    expect(await loadClassificationQueue(db, CLASSIFIER_VERSION, 10, { includeTopicDiscoveries: true })).toHaveLength(0)
+    expect(await loadClassificationQueue(db, 'v2-next', 10, { includeTopicDiscoveries: true })).toHaveLength(1)
   })
 
   it('treats each monorepo subpackage as its own candidate', async () => {
@@ -193,7 +193,7 @@ describe('loadClassificationQueue', () => {
       pluginPath: 'packages/b', packageName: '@owner/dsh-b',
     })
 
-    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10)
+    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10, { includeTopicDiscoveries: true })
     expect(queue).toHaveLength(2)
     expect(queue.map((entry) => entry.packageName).sort())
       .toEqual(['@owner/dsh-a', '@owner/dsh-b'])
@@ -202,7 +202,7 @@ describe('loadClassificationQueue', () => {
   it('excludes topic plugins that have not been accepted', async () => {
     seedRepository(database, 1, 'owner/pending')
     seedPlugin(database, 1, 'owner/pending', { validation: 'rejected' })
-    expect(await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10)).toHaveLength(0)
+    expect(await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10, { includeTopicDiscoveries: true })).toHaveLength(0)
   })
 
   it('orders by stars so the most visible plugins are fixed first', async () => {
@@ -210,7 +210,7 @@ describe('loadClassificationQueue', () => {
     seedPlugin(database, 1, 'owner/low')
     seedRepository(database, 2, 'owner/high', { stars: 900 })
     seedPlugin(database, 2, 'owner/high')
-    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10)
+    const queue = await loadClassificationQueue(sqliteD1(database), CLASSIFIER_VERSION, 10, { includeTopicDiscoveries: true })
     expect(queue.map((entry) => entry.pluginId)).toEqual(['owner/high', 'owner/low'])
   })
 })
@@ -391,6 +391,8 @@ describe('runPluginClassifyTask', () => {
       CATALOG_DB: sqliteD1(database),
       AI: { run },
       CATALOG_CACHE: { get: vi.fn(), put: vi.fn() },
+      // Fixtures seed topic-discovered rows; exercise the enabled path.
+      TOPIC_DISCOVERY_ENABLED: '1',
     } as unknown as Env
   }
   const reply = (items: unknown[], neurons = 12) => ({

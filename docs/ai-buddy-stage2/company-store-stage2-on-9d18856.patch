@@ -1,0 +1,2055 @@
+From 4d461203a9d26ca0349da79767aa37215bf58c11 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Fri, 21 Aug 2026 20:04:19 +0000
+Subject: [PATCH] feat(market): optional company-store built-in partner source
+
+---
+ dsh-community-market/README.i18n.yaml         |   4 +-
+ dsh-community-market/README.md                |  12 +-
+ dsh-community-market/README.zh.md             |  14 +-
+ .../docs/market-shell.i18n.yaml               |   4 +-
+ dsh-community-market/docs/market-shell.md     |  14 +-
+ dsh-community-market/docs/market-shell.zh.md  |  14 +-
+ .../src/adapters/company-store.ts             |  25 +
+ .../src/adapters/dsh-1024-style-store.ts      | 488 +++++++++++++++++
+ .../src/adapters/dsh-1024store.ts             | 489 +-----------------
+ dsh-community-market/src/catalog/service.ts   | 109 +++-
+ .../src/client/MarketSettingsTab.tsx          |   3 +
+ dsh-community-market/src/client/locales.ts    |  56 +-
+ dsh-community-market/src/host/routes.ts       |  23 +-
+ dsh-community-market/src/index.ts             |   6 +
+ .../tests/company-store-adapter.spec.ts       | 143 +++++
+ .../fixtures/plugins-api.installable.json     | 135 +++++
+ .../tests/host-routes.spec.ts                 |  11 +
+ 17 files changed, 1022 insertions(+), 528 deletions(-)
+ create mode 100644 dsh-community-market/src/adapters/company-store.ts
+ create mode 100644 dsh-community-market/src/adapters/dsh-1024-style-store.ts
+ create mode 100644 dsh-community-market/tests/company-store-adapter.spec.ts
+ create mode 100644 dsh-community-market/tests/fixtures/plugins-api.installable.json
+
+diff --git a/dsh-community-market/README.i18n.yaml b/dsh-community-market/README.i18n.yaml
+index e130f9c..3c2a2a7 100644
+--- a/dsh-community-market/README.i18n.yaml
++++ b/dsh-community-market/README.i18n.yaml
+@@ -1,4 +1,4 @@
+ # Bilingual-pair consistency record. Both languages carry equal authority.
+ # Update both files and record their Git blob hashes after editing either side.
+-README.md: e72bd8e61db3fd663a2ec61aefe8521574d5ac2a
+-README.zh.md: b54187a3c8c13114718a2adb975861d642bd20a8
++README.md: c709e22318c5b1c3d603aec084f3a32663b8858c
++README.zh.md: f78127a7e7966501752018c599c76093da3f9e65
+diff --git a/dsh-community-market/README.md b/dsh-community-market/README.md
+index e72bd8e..c709e22 100644
+--- a/dsh-community-market/README.md
++++ b/dsh-community-market/README.md
+@@ -2,9 +2,9 @@
+ 
+ [中文说明](README.zh.md)
+ 
+-DSH Community Market is the open plugin market built into [DSH Desktop](../README.en.md). It helps people discover community plugins and, on Desktop, install, manage, or remove npm packages that pass the Market Host's checks.
++DSH Community Market is the open plugin market built into [AI Buddy](../README.en.md). It helps people discover community plugins and, on Desktop, install, manage, or remove npm packages that pass the Market Host's checks.
+ 
+-> **Current status: complete and built into DSH Desktop.** The package provides loadable Host and Client entries, persisted user-owned source records, a constrained HTTPS client, standard sources and reviewed cooperating-source adapters, an official **Plugin market** tab under **Settings > Plugins**, a sidebar launcher, Host-managed install and receipt-backed uninstall, plus fail-closed enable/disable controls for mutable direct bundles. This is not a claim that listed or installable plugin code is safe.
++> **Current status: complete and built into AI Buddy.** The package provides loadable Host and Client entries, persisted user-owned source records, a constrained HTTPS client, standard sources and reviewed cooperating-source adapters, an official **Plugin market** tab under **Settings > Plugins**, a sidebar launcher, Host-managed install and receipt-backed uninstall, plus fail-closed enable/disable controls for mutable direct bundles. This is not a claim that listed or installable plugin code is safe.
+ 
+ ## Available capabilities
+ 
+@@ -23,7 +23,7 @@ The market remains open to ongoing cooperation with a wide range of plugin data
+ 
+ Anyone can provide, integrate, and use a plugin data source. A conforming source only needs to publish a [`catalog-source` manifest](docs/schemas/catalog-source.schema.json) and return data matching the [`catalog-provider-page` schema](docs/schemas/catalog-provider-page.schema.json) from its `/v1/plugins` endpoint, with no custom Market code. An existing API can keep its own format and contact us to join as a cooperating source through a reviewed adapter shipped with Market. A source may provide `media.icon`; Desktop validates and proxies it before display. Sources without an icon remain valid and receive a local fallback.
+ 
+-Before presenting a selected source, the Host builds one complete, validated local index. A standard source is scanned through its declared cursor and page limits; the reviewed 1024Store adapter reads its full registry once and normalizes it in Schema-bounded chunks. The reviewed dshfind adapter walks its REST pages with one `data_version` fixed across the complete scan. Search, multi-category OR filtering, category choices, and pagination then run against that complete local index without refetching the provider for each interaction. Every visible page contains at most 50 items, and the category choices cover all categories in the index rather than only pages already shown. **Installable** is a fail-closed structural subset of the same index and does not change with local installed, receipt, or enabled/disabled state; authoritative npm and local-operation verification begin only when the user previews one candidate.
++Before presenting a selected source, the Host builds one complete, validated local index. A standard source is scanned through its declared cursor and page limits; the reviewed 1024Store adapter reads the published registry page once, indexes that homepage slice, and normalizes it in Schema-bounded chunks. A later search may send the provider `q` parameter. The reviewed dshfind adapter walks its REST pages with one `data_version` fixed across the complete scan. Search, multi-category OR filtering, category choices, and pagination then run against that complete local index without refetching the provider for each interaction. Every visible page contains at most 50 items, and the category choices cover all categories in the index rather than only pages already shown. **Installable** is a fail-closed structural subset of the same index and does not change with local installed, receipt, or enabled/disabled state; authoritative npm and local-operation verification begin only when the user previews one candidate.
+ 
+ The Host reuses a completed index until its cache expires (currently five minutes by default). When optional index metadata is returned, `scannedAt` identifies the completed scan, `expiresAt` its cache deadline, optional `providerRevision` the source revision observed consistently across the scan, and `cacheStatus` whether the response was freshly scanned or reused. An explicit refresh replaces the index and bypasses the underlying catalog-response cache; it is not merely a repaint of the current 50 items.
+ 
+@@ -31,6 +31,8 @@ The Host reuses a completed index until its cache expires (currently five minute
+ 
+ [dshfind](https://dshfind.com) is another optional cooperating catalog source. Its reviewed adapter reads the public REST catalog only after the user adds and selects it. The adapter fixes the first page's `data_version` for every later page, then serves search, categories, and pagination from the completed local index. dshfind's published anonymous quota means the first complete synchronization may be deliberately throttled and take longer than an ordinary page load. It is not selected by default, preferred, recommended, or used as a fallback.
+ 
++**Company Store** (`company-store`) is an optional partner built-in that shares the 1024Store-style wire shape through a reviewed adapter. It is not selected by default, is never used as a fallback when official `dsh-1024store` fails, and surfaces the product disclaimer `公司目录，收录≠安全审核` when selected. Its placeholder public apex is `https://plugins.company.example`.
++
+ dshfind may supply a provider-reviewed npm method containing an exact stable version and `repository_backlink` evidence. The adapter emits `package` and `latestVersion` only when exactly one method is `npm`, `verified`, `repository_backlink`, does not require build allowance, and agrees with a supplied `install.pkg_name`; all other entries remain browse-only. It neither displays nor executes `install.cmd` and never infers identity from command text. A resulting **Installable** card is still only a structural candidate: the Host independently revalidates npm, repository, integrity, runtime, lifecycle, bundle, and profile facts during preview and execution. dshfind scores, grades, featured/official labels, risk labels, and installation probes remain provider claims; none is an Anywhere Labs security review or endorsement.
+ 
+ All catalog data is remote and untrusted. A listing means only that a provider supplied metadata; it does **not** mean that Anywhere Labs reviewed, recommends, or guarantees the plugin.
+@@ -40,9 +42,9 @@ All catalog data is remote and untrusted. A listing means only that a provider s
+ - Background browsing never installs a package or executes repository code.
+ - Installation starts only after an explicit user action and confirmation.
+ - **Installable** is a Host-produced, fail-closed structural candidate set from the selected catalog, not a renderer guess or proof that npm was checked. A candidate needs reviewed provider verification with `repository_backlink`, an exact stable npm target, and a canonical repository, and must not be product-blocked. Installation, receipt, uninstall history, and enabled/disabled state never grant or remove catalog membership. Preview performs the first authoritative official-registry and local-action check for that one package; execution repeats mutable checks.
+-- The managed installer accepts exact stable npm versions only. It does not install GitHub URLs, mutable ranges or tags, deprecated packages, packages whose target manifest defines `preinstall`, `install`, `postinstall`, or `prepare`, or packages incompatible with the bundled DSH rc.2 or Node.js runtime.
++- The managed installer accepts exact stable npm versions only. It does not install GitHub URLs, mutable ranges or tags, deprecated packages, packages whose target manifest defines `preinstall`, `install`, `postinstall`, or `prepare`, or packages incompatible with the bundled DSH rc.8 or Node.js runtime.
+ - Provider-supplied command strings, install snippets, and repository install instructions are discarded, never displayed as a Host manual hint, and never executed. A separate manual hint, when available, is an exact npm command reconstructed by the Host from normalized identity, marked as not fully verified, and displayed for the user to run at their own discretion. For a qualifying dshfind item, that normalized identity comes only from the reviewed structured npm method, never from `install.cmd`.
+-- The renderer submits only source/item or receipt identifiers for managed operations. The **Open DSH Terminal** action submits an empty request and never receives, copies, or executes the displayed manual command.
++- The renderer submits only source/item or receipt identifiers for managed operations. The **Open AI Buddy Terminal** action submits an empty request and never receives, copies, or executes the displayed manual command.
+ - The confirmation shows the exact npm package and version plus the active profile. Plugin changes use the existing Desktop-managed DSH plugin service and run one operation at a time; success offers **Restart later** and **Restart now**.
+ - Before a Market install or a built-in-terminal `dsh plugin add`, Desktop creates a private recovery snapshot of only the active profile's `package.json`, `pnpm-lock.yaml`, and `pnpm-workspace.yaml`. It does not back up or actively roll back `node_modules`, read environment variables, or collect separate credential stores. The three allowlisted files are copied as-is and therefore must not contain credentials.
+ - A successful protected install remains pending until the next Desktop generation starts the Host successfully and receives a healthy Renderer report within the 30-second deadline. Another protected plugin add is refused in the meantime. If startup fails, Desktop first saves local diagnostic evidence, restores only a recognized before/after configuration image, and relaunches at most once. Unknown file drift is not overwritten and requires manual repair.
+diff --git a/dsh-community-market/README.zh.md b/dsh-community-market/README.zh.md
+index b54187a..f78127a 100644
+--- a/dsh-community-market/README.zh.md
++++ b/dsh-community-market/README.zh.md
+@@ -2,9 +2,9 @@
+ 
+ [English](README.md)
+ 
+-DSH Community Market 是 [DSH Desktop](../README.md) 内置的开放插件市场，用于发现社区插件；在 Desktop 中，还可以安装、管理或移除通过 Market Host 检查的 npm package。
++DSH Community Market 是 [AI Buddy](../README.md) 内置的开放插件市场，用于发现社区插件；在 Desktop 中，还可以安装、管理或移除通过 Market Host 检查的 npm package。
+ 
+-> **当前状态：已完成并内置于 DSH Desktop。** Package 提供可加载的 Host/Client 入口、用户拥有的来源持久化、受限 HTTPS client、标准来源与受审合作来源 adapter，并在**设置 > 插件**中提供官方的**插件市场**标签页和侧边栏入口；同时支持 Host 受管安装、基于 receipt 的卸载，以及对可变 direct bundle 的 fail-closed 启用/禁用。这不表示被收录或显示为可安装的插件代码是安全的。
++> **当前状态：已完成并内置于 AI Buddy。** Package 提供可加载的 Host/Client 入口、用户拥有的来源持久化、受限 HTTPS client、标准来源与受审合作来源 adapter，并在**设置 > 插件**中提供官方的**插件市场**标签页和侧边栏入口；同时支持 Host 受管安装、基于 receipt 的卸载，以及对可变 direct bundle 的 fail-closed 启用/禁用。这不表示被收录或显示为可安装的插件代码是安全的。
+ 
+ ## 已有能力
+ 
+@@ -15,7 +15,7 @@ DSH Community Market 是 [DSH Desktop](../README.md) 内置的开放插件市场
+ 3. **已安装**会把有效 Market receipt 与 Desktop 当前 profile 的 direct bundle 清单进行核对。Receipt 持有的 bundle 可以卸载；可变 bundle 可以禁用并重新启用。已禁用且由 receipt 持有的 bundle 会同时保留“启用”和“卸载”。
+ 4. **来源**用于选择和管理目录来源；同一时间只浏览一个来源。
+ 
+-点击插件卡片会同步打开弹窗，并由 Host 判断这个精确的来源/条目能否使用受管安装。Preview 成功时，Host 才会针对它访问官方 npm registry，完整复核身份、仓库、integrity、runtime、lifecycle script、DSH bundle 证据和当前 profile，然后把同一个弹窗切换成精确确认；真正执行前还会再次检查可变状态。如果受管 preview 不可用，弹窗会保留为详情页，并可能展示 Host 根据规范化身份重建的精确 npm 命令。它不是 provider 命令，不会发送给 Desktop action，也不会自动执行；“打开 DSH 终端”只负责打开 Desktop 内置终端，由用户自行检查、复制和执行命令。通过这个内置终端运行的 `dsh plugin add` 会进入 Desktop 的受保护安装恢复边界；在其中直接执行 `pnpm`、`npm`，或在外部系统终端运行命令，都不受该边界保护。受管 profile 修改成功后，用户可以使用一次性 Desktop action 立即重启，也可以选择稍后重启。市场只是现有 DSH 能力之上的产品壳，不会再发明一套插件格式、包管理器、profile 存储或高权限安装器。
++点击插件卡片会同步打开弹窗，并由 Host 判断这个精确的来源/条目能否使用受管安装。Preview 成功时，Host 才会针对它访问官方 npm registry，完整复核身份、仓库、integrity、runtime、lifecycle script、DSH bundle 证据和当前 profile，然后把同一个弹窗切换成精确确认；真正执行前还会再次检查可变状态。如果受管 preview 不可用，弹窗会保留为详情页，并可能展示 Host 根据规范化身份重建的精确 npm 命令。它不是 provider 命令，不会发送给 Desktop action，也不会自动执行；“打开 AI Buddy 终端”只负责打开 Desktop 内置终端，由用户自行检查、复制和执行命令。通过这个内置终端运行的 `dsh plugin add` 会进入 Desktop 的受保护安装恢复边界；在其中直接执行 `pnpm`、`npm`，或在外部系统终端运行命令，都不受该边界保护。受管 profile 修改成功后，用户可以使用一次性 Desktop action 立即重启，也可以选择稍后重启。市场只是现有 DSH 能力之上的产品壳，不会再发明一套插件格式、包管理器、profile 存储或高权限安装器。
+ 
+ ## 目录来源
+ 
+@@ -23,7 +23,7 @@ DSH Community Market 是 [DSH Desktop](../README.md) 内置的开放插件市场
+ 
+ 任何人都可以提供、接入和使用插件数据源。符合规范的数据源只需发布一份 [`catalog-source` manifest](docs/schemas/catalog-source.schema.json)，并由其 `/v1/plugins` 接口返回符合 [`catalog-provider-page` Schema](docs/schemas/catalog-provider-page.schema.json) 的数据，无需为 Market 编写自定义代码。已有 API 无需更换自己的格式，也可以联系我们，通过随 Market 发布的受审 adapter 作为合作数据源接入。来源可以提供 `media.icon`，Desktop 会先校验并代理图片再显示；没有图标的来源仍然合法，界面会使用本地 fallback。
+ 
+-展示已选来源前，Host 会先建立一份完整、经过校验的本地索引。标准来源按照声明的 cursor 与 page limit 扫描；经过审核的 1024Store adapter 只读取一次完整 registry，再按 Schema 上限分块标准化；经过审核的 dshfind adapter 则遍历 REST 分页，并在整次扫描中固定同一个 `data_version`。之后的搜索、多分类 OR 筛选、分类选项和分页都在这份完整本地索引上进行，不会因为每次交互重新请求 provider。每个可见页面最多展示 50 条，分类选项覆盖索引中的全部分类，而不只是已经显示的页面。**可安装**是同一索引上 fail-closed 的结构子集，不随本地安装、receipt 或启用/禁用状态变化；只有用户预览某个候选时，才开始权威 npm 与本地操作复核。
++展示已选来源前，Host 会先建立一份完整、经过校验的本地索引。标准来源按照声明的 cursor 与 page limit 扫描；经过审核的 1024Store adapter 只读取一次当前发布的 registry 页并索引该首页切片，再按 Schema 上限分块标准化；之后的搜索可以发送 provider 的 `q` 参数；经过审核的 dshfind adapter 则遍历 REST 分页，并在整次扫描中固定同一个 `data_version`。之后的搜索、多分类 OR 筛选、分类选项和分页都在这份完整本地索引上进行，不会因为每次交互重新请求 provider。每个可见页面最多展示 50 条，分类选项覆盖索引中的全部分类，而不只是已经显示的页面。**可安装**是同一索引上 fail-closed 的结构子集，不随本地安装、receipt 或启用/禁用状态变化；只有用户预览某个候选时，才开始权威 npm 与本地操作复核。
+ 
+ Host 会在 cache 过期前复用已经完成的索引（当前默认五分钟）。如果 response 提供可选索引 metadata，`scannedAt` 表示扫描完成时间，`expiresAt` 表示 cache 截止时间，可选 `providerRevision` 表示整次扫描中一致观察到的来源 revision，`cacheStatus` 表示本次使用新扫描还是复用 cache。用户明确刷新时会替换索引并绕过底层目录 response cache，不只是重新绘制当前 50 条。
+ 
+@@ -31,6 +31,8 @@ Host 会在 cache 过期前复用已经完成的索引（当前默认五分钟
+ 
+ [dshfind](https://dshfind.com) 是另一个可选合作目录来源。只有用户添加并选择它之后，经审查的 adapter 才会读取其公开 REST 目录。Adapter 会把首页的 `data_version` 固定到所有后续分页，再从完成的本地索引提供搜索、分类和分页。由于 dshfind 公布的匿名配额限制，首次完整同步会主动节流，可能明显慢于普通页面加载。它不会被默认选择、优先排序、推荐或用作兜底。
+ 
++**Company Store（公司插件目录）**（`company-store`）是可选合作内置来源，通过与 1024Store 相同的经审查 adapter 工厂接入公司目录。它不是默认或优先来源，也不会在官方 `dsh-1024store` 失败时兜底；选中后会显示免责声明：`公司目录，收录≠安全审核`。占位公开域名是 `https://plugins.company.example`。
++
+ dshfind 可以提供包含精确稳定版本和 `repository_backlink` 证据、由提供方复核的 npm method。只有恰好一个 method 同时满足 `npm`、`verified`、`repository_backlink`、无需 build allowance，并且与已提供的 `install.pkg_name` 一致时，adapter 才会输出 `package` 和 `latestVersion`；其他条目仍然只能浏览。Adapter 不展示也不执行 `install.cmd`，也绝不会从命令文本中推断身份。进入**可安装**仍只代表结构候选；Host 会在 preview 和执行阶段独立复核 npm、仓库、integrity、runtime、lifecycle、bundle 与 profile 事实。dshfind 的分数、等级、精选/官方标记、风险标记与安装探测都只是 provider claim；它们都不代表 Anywhere Labs 完成了安全审核或作出推荐。
+ 
+ 所有目录数据都是远程、且不可信的输入。项目被收录只表示提供方返回了相关元数据；这**不表示** Anywhere Labs 已经审核、推荐或保证该插件。
+@@ -40,9 +42,9 @@ dshfind 可以提供包含精确稳定版本和 `repository_backlink` 证据、
+ - 后台浏览不会安装任何包，也不会执行仓库代码。
+ - 只有用户明确点击并确认后，安装才会开始。
+ - **可安装**是 Host 从已选目录以 fail-closed 方式生成的结构候选集合，不是 renderer 猜测，也不表示 npm 已经复核。候选必须具有经过审核的 provider 验证与 `repository_backlink`、精确稳定的 npm 目标和规范仓库，而且不能位于产品 blocklist。安装状态、receipt、卸载历史和启用/禁用状态都不会授予或移除目录成员资格。Preview 才会针对这个 package 首次执行官方 registry 与本地操作权威复核；执行前会再检查可变状态。
+-- 受管安装器只接受精确、稳定的 npm 版本。GitHub URL、可变版本范围或 tag、deprecated package、目标 manifest 中定义了 `preinstall`、`install`、`postinstall` 或 `prepare` 的 package，以及不兼容内置 DSH rc.2 或 Node.js runtime 的 package，都会被拒绝。
++- 受管安装器只接受精确、稳定的 npm 版本。GitHub URL、可变版本范围或 tag、deprecated package、目标 manifest 中定义了 `preinstall`、`install`、`postinstall` 或 `prepare` 的 package，以及不兼容内置 DSH rc.8 或 Node.js runtime 的 package，都会被拒绝。
+ - 目录提供方返回的命令字符串、安装片段和仓库安装指令都会被丢弃，既不会作为 Host 手动提示展示，也绝不会执行。可用时，Host 会根据规范化身份单独重建一条精确 npm 手动提示；它会明确标为未完成全部验证，只供用户自行决定是否执行。对于符合条件的 dshfind 条目，该规范化身份只能来自受审的结构化 npm method，绝不会来自 `install.cmd`。
+-- 受管操作中，renderer 只提交来源/条目或 receipt 标识。“打开 DSH 终端”提交的是空请求，不会接收、复制或执行界面展示的手动命令。
++- 受管操作中，renderer 只提交来源/条目或 receipt 标识。“打开 AI Buddy 终端”提交的是空请求，不会接收、复制或执行界面展示的手动命令。
+ - 确认框会展示精确 npm package 与版本，以及当前 profile。插件变更使用 Desktop 已有的受管 DSH 插件服务，并且一次只执行一个操作；成功后可以选择**稍后重启**或**立即重启**。
+ - Market 安装或内置终端中的 `dsh plugin add` 开始前，Desktop 只会为当前 profile 的 `package.json`、`pnpm-lock.yaml` 和 `pnpm-workspace.yaml` 创建私有恢复快照。它不会备份或主动回滚 `node_modules`，也不会读取环境变量或另行收集凭据存储；这三个白名单文件会按原内容复制，因此其中不应写入凭据。
+ - 受保护安装成功后，要等下一次 Desktop generation 成功启动 Host，并在 30 秒期限内收到 Renderer 的健康报告，才算验证完成；此前会拒绝下一次受保护的插件添加。如果启动失败，Desktop 会先在本地保存诊断证据，再仅对已识别的前后配置状态执行恢复，并且最多自动重启一次。出现未知文件漂移时不会覆盖用户数据，而会要求手动修复。
+diff --git a/dsh-community-market/docs/market-shell.i18n.yaml b/dsh-community-market/docs/market-shell.i18n.yaml
+index 126d157..df43848 100644
+--- a/dsh-community-market/docs/market-shell.i18n.yaml
++++ b/dsh-community-market/docs/market-shell.i18n.yaml
+@@ -1,4 +1,4 @@
+ # Bilingual-pair consistency record. Both languages carry equal authority.
+ # Update both files and record their Git blob hashes after editing either side.
+-market-shell.md: 7f257e155404bc743c58b9ebf83096cfae26b746
+-market-shell.zh.md: c25f32c5d1cc5063eef4c5dcd2dbf4fc525c7605
++market-shell.md: 652fbbe0f5d7ea23e60ba8c42157bf5560d73c7f
++market-shell.zh.md: c65f650c68f937c3fee23242b8a1d0b93242a5c9
+diff --git a/dsh-community-market/docs/market-shell.md b/dsh-community-market/docs/market-shell.md
+index 7f257e1..652fbbe 100644
+--- a/dsh-community-market/docs/market-shell.md
++++ b/dsh-community-market/docs/market-shell.md
+@@ -2,7 +2,7 @@
+ 
+ [中文](market-shell.zh.md)
+ 
+-Status: delivered and built into DSH Desktop, including the Host/Client market, limited npm installation, receipt-backed uninstall, and direct-bundle enable/disable
++Status: delivered and built into AI Buddy, including the Host/Client market, limited npm installation, receipt-backed uninstall, and direct-bundle enable/disable
+ 
+ This document defines the delivered implementation boundary for `dsh-community-market`. It is deliberately narrower than a complete marketplace. The package owns an in-product shell and adapters; it does not own the community catalog, package registry, or DSH profile format.
+ 
+@@ -66,11 +66,13 @@ The standard adapter serializes only fields declared in the source manifest's `q
+ 
+ [dshfind](https://dshfind.com) is another optional cooperating source with a reviewed built-in adapter. It is not selected by default, preferred, recommended, or used as a fallback. Its listings, scores, grades, `official`/featured labels, risk labels, and installation probes remain provider claims rather than Anywhere Labs trust decisions.
+ 
++**Company Store** is an optional partner built-in (`company-store`) that reuses the reviewed 1024Store-style adapter factory against a company catalog apex. It is not default, preferred, or a fallback when `dsh-1024store` fails. When selected, the Market chrome shows the disclaimer `公司目录，收录≠安全审核` (EN: listing means inclusion only — not a security audit).
++
+ The published normative contract is the [catalog provider contract](catalog-provider-contract.md), with machine-readable schemas for the source manifest, query, untrusted provider page, and Host-normalized response. Remote fields are display data, not executable instructions. Text is rendered as text, never as raw HTML.
+ 
+ ## Complete local index and cache
+ 
+-The Host completes one full normalized scan for the selected source and current locale before serving catalog interactions. Standard sources are exhausted through their declared cursor and effective page limits. The reviewed 1024Store adapter instead performs one full-registry GET, normalizes every valid item, and emits Schema-bounded chunks of at most 100 items. The dshfind adapter walks REST pages of at most 100 items and fixes the first page's `data_version` across every later page. Because its published anonymous quota is lower than the current first-sync page count, that initial scan is deliberately throttled and may take longer. A stale-version or rate-limit failure never publishes a partial index. The 10,000-item Host limit, source identity, cancellation, provenance, and origin checks apply across the whole scan.
++The Host completes one full normalized scan for the selected source and current locale before serving catalog interactions. Standard sources are exhausted through their declared cursor and effective page limits. The reviewed 1024Store adapter instead performs one registry GET, indexes the published homepage slice, and emits Schema-bounded chunks of at most 100 items. A later search may send the provider `q` parameter so packages outside that slice remain resolvable. The dshfind adapter walks REST pages of at most 100 items and fixes the first page's `data_version` across every later page. Because its published anonymous quota is lower than the current first-sync page count, that initial scan is deliberately throttled and may take longer. A stale-version or rate-limit failure never publishes a partial index. The 10,000-item Host limit, source identity, cancellation, provenance, and origin checks apply across the whole scan.
+ 
+ Search, sorting, multi-category OR filtering, category enumeration, and pagination operate only on this complete local index. The UI shows at most 50 matching items per page. **Load more** advances a Host-owned local cursor; it does not issue another filtered provider request. The category list is the complete set present in the index. **Installable** is a fail-closed structural subset of this same index, not a second provider feed and not the result of per-package registry requests. Its catalog membership is independent of local installation, receipt, uninstall history, and enabled/disabled state.
+ 
+@@ -89,7 +91,7 @@ Catalog browsing provides:
+ 
+ - a source chooser, saved source management, and addition of a conforming source;
+ - one selected source per browsing session, with no hidden request or fallback to another saved source;
+-- one complete selected-source scan, with standard-source network pages bounded by the manifest and Schema maximum of 100, and one full-registry read for the reviewed 1024Store adapter;
++- one complete selected-source scan, with standard-source network pages bounded by the manifest and Schema maximum of 100, and one published-page read for the reviewed 1024Store adapter;
+ - a bottom **Load more** action that advances through local matching results in fixed pages of at most 50;
+ - loading, empty, offline, invalid-response, and retry states;
+ - local search over every normalized name and description in the complete index;
+@@ -110,7 +112,7 @@ Clicking a card is an explicit request to inspect that item. The dialog opens sy
+ - the short-lived confirmation expiry; and
+ - a warning that plugins run locally with the user's permissions and that this verification is not a code audit.
+ 
+-Catalog `install` fields, documentation snippets, provider commands, and arbitrary strings are discarded as execution authority and are never executed or displayed as a Host manual hint. When a normalized item carries an exact stable npm identity, the Host may separately reconstruct a bounded display-only command. That text may differ from repository documentation, is explicitly marked as not fully verified, and is never sent to a package manager or Desktop action. The dshfind adapter specifically discards `install.cmd` and never parses or forwards it. The built-in managed installer rejects GitHub and other repository install targets, ranges, tags, prereleases, deprecated versions, a target manifest containing `preinstall`, `install`, `postinstall`, or `prepare`, packages incompatible with the bundled DSH `0.1.1-rc.2`/Cordis/Node.js runtime, repository mismatches, and packages without official npm SHA-512/tarball and valid DSH bundle evidence.
++Catalog `install` fields, documentation snippets, provider commands, and arbitrary strings are discarded as execution authority and are never executed or displayed as a Host manual hint. When a normalized item carries an exact stable npm identity, the Host may separately reconstruct a bounded display-only command. That text may differ from repository documentation, is explicitly marked as not fully verified, and is never sent to a package manager or Desktop action. The dshfind adapter specifically discards `install.cmd` and never parses or forwards it. The built-in managed installer rejects GitHub and other repository install targets, ranges, tags, prereleases, deprecated versions, a target manifest containing `preinstall`, `install`, `postinstall`, or `prepare`, packages incompatible with the bundled DSH `0.1.1-rc.1`/Cordis/Node.js runtime, repository mismatches, and packages without official npm SHA-512/tarball and valid DSH bundle evidence.
+ 
+ Preview performs the full npm registry, canonical-repository, deprecation, lifecycle-script, runtime, integrity, tarball, DSH bundle, and active-profile checks for that one package. The resulting one-shot opaque preview binds the verified facts. Immediately before the confirmed mutation, execution re-fetches or rechecks mutable registry, candidate, and profile evidence and refuses the operation if the candidate, active profile, tarball, integrity, or bundle path changed. For managed operations the renderer submits only opaque identities, never a package-manager spec or command.
+ 
+@@ -123,7 +125,7 @@ On Desktop, the Market Host uses the public services already owned by `dsh-plugi
+ 5. Verify the installed profile dependency and contained DSH bundle before saving a receipt; restore the allowlisted configuration snapshot when an invalid or unrecordable install has a recognized file image.
+ 6. After success, issue a short-lived one-shot restart grant so the user can choose **Restart now** or **Restart later**; never restart silently. Keep the recovery record pending and refuse another protected plugin add until the next Desktop generation verifies startup health or reconciles a rollback.
+ 
+-When Desktop services are unavailable, browsing stays available while package operations explain that they require DSH Desktop. Managed installation never falls back to ambient `pnpm`, a shell command, a guessed `dsh` executable, or an inactive profile. **Open DSH Terminal** is a separate user-controlled escape hatch: its request contains no command, path, or profile and only opens Desktop's built-in terminal; the user decides whether to copy and run displayed text. A later `dsh plugin add` through that built-in terminal receives the same configuration-recovery handoff. Direct `pnpm` or `npm` commands in that terminal and commands run in an external system terminal do not.
++When Desktop services are unavailable, browsing stays available while package operations explain that they require AI Buddy. Managed installation never falls back to ambient `pnpm`, a shell command, a guessed `dsh` executable, or an inactive profile. **Open AI Buddy Terminal** is a separate user-controlled escape hatch: its request contains no command, path, or profile and only opens Desktop's built-in terminal; the user decides whether to copy and run displayed text. A later `dsh plugin add` through that built-in terminal receives the same configuration-recovery handoff. Direct `pnpm` or `npm` commands in that terminal and commands run in an external system terminal do not.
+ 
+ ## Install recovery boundary
+ 
+@@ -178,7 +180,7 @@ Raw response bodies, filesystem paths, tokens, environment variables, and comman
+ 
+ - The npm name and monorepo package boundary are established.
+ - Catalog attribution, trust rules, and integration decisions are recorded.
+-- The Host/Client package is delivered as a built-in DSH Desktop implementation.
++- The Host/Client package is delivered as a built-in AI Buddy implementation.
+ 
+ ### Phase 1: catalog market shell — delivered and built in
+ 
+diff --git a/dsh-community-market/docs/market-shell.zh.md b/dsh-community-market/docs/market-shell.zh.md
+index c25f32c..c65f650 100644
+--- a/dsh-community-market/docs/market-shell.zh.md
++++ b/dsh-community-market/docs/market-shell.zh.md
+@@ -2,7 +2,7 @@
+ 
+ [English](market-shell.md)
+ 
+-状态：已完成并内置于 DSH Desktop，包括 Host/Client 市场、有限 npm 安装、基于 receipt 的卸载及 direct-bundle 启用/禁用
++状态：已完成并内置于 AI Buddy，包括 Host/Client 市场、有限 npm 安装、基于 receipt 的卸载及 direct-bundle 启用/禁用
+ 
+ 本文定义 `dsh-community-market` 已交付的实现边界。它刻意比完整的插件市场更小：package 只负责产品内的市场壳和适配器，不负责社区目录、包 registry 或 DSH profile 格式。
+ 
+@@ -66,11 +66,13 @@ DSH Community Market 以开放方式与各种插件数据源合作。任何人
+ 
+ [dshfind](https://dshfind.com) 是另一个通过经审查内置 adapter 接入的可选合作来源。它不会被默认选择、优先排序、推荐或用作兜底。它的目录收录、分数、等级、`official`/精选标记、风险标记和安装探测仍是 provider claim，不是 Anywhere Labs 作出的信任判断。
+ 
++**Company Store（公司插件目录）** 是可选合作内置来源（`company-store`），通过与 1024Store 相同的经审查 adapter 工厂接入公司目录。它不是默认、优先来源，也不会在官方 `dsh-1024store` 失败时兜底。选中后 Market 界面会显示免责声明：`公司目录，收录≠安全审核`。
++
+ 已发布的规范合同是[目录提供方合同](catalog-provider-contract.zh.md)，其中包含来源 manifest、query、不可信 provider page 和 Host 标准化响应的机器可读 Schema。远程字段只是展示数据，不是可执行指令；文本只能按文本渲染，不能作为原始 HTML。
+ 
+ ## 完整本地索引与 cache
+ 
+-Host 会先针对已选来源和当前 locale 完成一次全量标准化扫描，再提供目录交互。标准来源按照声明的 cursor 和有效 page limit 扫描到结束；经过审核的 1024Store adapter 则只执行一次完整 registry GET，标准化每个合法条目，并按每块最多 100 条的 Schema 上限输出。dshfind adapter 会遍历每页最多 100 条的 REST 数据，并在所有后续分页中固定首页的 `data_version`。由于其公布的匿名配额低于当前首次同步所需的 page 数，首次扫描会主动节流，可能明显更慢；版本过期或限流失败时不会发布部分索引。10,000 条 Host 上限、来源身份、取消、provenance 和同源检查覆盖整次扫描。
++Host 会先针对已选来源和当前 locale 完成一次全量标准化扫描，再提供目录交互。标准来源按照声明的 cursor 和有效 page limit 扫描到结束；经过审核的 1024Store adapter 则只执行一次 registry GET，索引当前发布的首页切片，并按每块最多 100 条的 Schema 上限输出。之后的搜索可以发送 provider 的 `q` 参数，以便解析切片之外的包。dshfind adapter 会遍历每页最多 100 条的 REST 数据，并在所有后续分页中固定首页的 `data_version`。由于其公布的匿名配额低于当前首次同步所需的 page 数，首次扫描会主动节流，可能明显更慢；版本过期或限流失败时不会发布部分索引。10,000 条 Host 上限、来源身份、取消、provenance 和同源检查覆盖整次扫描。
+ 
+ 搜索、排序、多分类 OR 筛选、分类枚举和分页只在这份完整本地索引上运行。UI 每页最多展示 50 条匹配结果；**加载更多**推进 Host 拥有的本地 cursor，不会再次向 provider 发出带筛选的请求。分类列表是索引中存在的完整分类集合。**可安装**是同一索引上 fail-closed 的结构子集，不是第二个 provider feed，也不是逐包请求 registry 得出的结果。它的目录成员资格与本地安装、receipt、卸载历史及启用/禁用状态无关。
+ 
+@@ -89,7 +91,7 @@ Market 界面包含四个视图：
+ 
+ - 来源选择、已保存来源管理和添加符合规范的来源；
+ - 每个浏览会话只有一个已选来源，不暗中请求或退回其他已保存来源；
+-- 对唯一已选来源执行一次完整扫描；标准来源的网络 page 服从 manifest 和 Schema 最大值 100，经过审核的 1024Store adapter 只读取一次完整 registry；
++- 对唯一已选来源执行一次完整扫描；标准来源的网络 page 服从 manifest 和 Schema 最大值 100，经过审核的 1024Store adapter 只读取一次当前发布页；
+ - 页面底部的**加载更多**按每页最多 50 条推进本地匹配结果；
+ - 加载、空目录、离线、非法响应和重试状态；
+ - 在完整索引的全部标准化名称与描述上进行本地搜索；
+@@ -110,7 +112,7 @@ Market 界面包含四个视图：
+ - 短时确认的过期时间；以及
+ - 插件会以用户权限作为本地代码运行、而且该复核不等于代码审计的提示。
+ 
+-目录中的 `install` 字段、文档命令、provider 命令和任意字符串都会失去执行授权，绝不会被执行，也不会作为 Host 手动提示展示。当标准化条目具有精确稳定的 npm 身份时，Host 可以另行重建一条有界、只用于展示的命令。该文本可能与仓库文档中的命令不同，会明确标为未完成全部验证，而且绝不会发送给 package manager 或 Desktop action。dshfind adapter 会明确丢弃 `install.cmd`，绝不解析或转发它。内置受管安装器会拒绝 GitHub 与其他仓库安装目标、range、tag、prerelease、deprecated 版本、目标 manifest 中包含 `preinstall`、`install`、`postinstall` 或 `prepare` 的 package、与内置 DSH `0.1.1-rc.2`/Cordis/Node.js runtime 不兼容的 package、仓库身份不匹配的 package，以及缺少官方 npm SHA-512/tarball 或有效 DSH bundle 证据的 package。
++目录中的 `install` 字段、文档命令、provider 命令和任意字符串都会失去执行授权，绝不会被执行，也不会作为 Host 手动提示展示。当标准化条目具有精确稳定的 npm 身份时，Host 可以另行重建一条有界、只用于展示的命令。该文本可能与仓库文档中的命令不同，会明确标为未完成全部验证，而且绝不会发送给 package manager 或 Desktop action。dshfind adapter 会明确丢弃 `install.cmd`，绝不解析或转发它。内置受管安装器会拒绝 GitHub 与其他仓库安装目标、range、tag、prerelease、deprecated 版本、目标 manifest 中包含 `preinstall`、`install`、`postinstall` 或 `prepare` 的 package、与内置 DSH `0.1.1-rc.1`/Cordis/Node.js runtime 不兼容的 package、仓库身份不匹配的 package，以及缺少官方 npm SHA-512/tarball 或有效 DSH bundle 证据的 package。
+ 
+ Preview 会针对这一个 package 完整检查 npm registry、规范仓库、deprecated 状态、lifecycle script、runtime、integrity、tarball、DSH bundle 和当前 profile，并用一次性不透明 preview 绑定已验证事实。用户确认后、真正修改前，执行阶段会立即重新获取或检查可变的 registry、候选和 profile 证据；候选、当前 profile、tarball、integrity 或 bundle 路径发生变化时会拒绝执行。受管操作中，renderer 只提交不透明身份，绝不会提交 package-manager spec 或命令。
+ 
+@@ -123,7 +125,7 @@ Preview 会针对这一个 package 完整检查 npm registry、规范仓库、de
+ 5. 保存 receipt 前验证 profile dependency 和没有越出 package 的 DSH bundle；安装结果非法或无法记录，并且文件状态可识别时，恢复白名单配置快照。
+ 6. 成功后签发短时、一次性重启许可，让用户选择**立即重启**或**稍后重启**；绝不静默重启。恢复记录继续保持 pending，直到下一次 Desktop generation 验证启动健康或完成回滚 reconcile；此前拒绝另一次受保护的插件添加。
+ 
+-没有 Desktop 服务时，目录浏览仍可使用，package 操作则会说明需要 DSH Desktop。受管安装不会退回 ambient `pnpm`、shell 命令、猜测的 `dsh` executable 或未激活 profile。**打开 DSH 终端**是独立的用户控制入口：请求不携带命令、路径或 profile，只负责打开 Desktop 内置终端；是否复制并运行展示文本完全由用户决定。之后通过该内置终端运行的 `dsh plugin add` 会获得相同的配置恢复 handoff；在其中直接执行 `pnpm`、`npm`，或在外部系统终端运行命令，都不会获得这项保护。
++没有 Desktop 服务时，目录浏览仍可使用，package 操作则会说明需要 AI Buddy。受管安装不会退回 ambient `pnpm`、shell 命令、猜测的 `dsh` executable 或未激活 profile。**打开 AI Buddy 终端**是独立的用户控制入口：请求不携带命令、路径或 profile，只负责打开 Desktop 内置终端；是否复制并运行展示文本完全由用户决定。之后通过该内置终端运行的 `dsh plugin add` 会获得相同的配置恢复 handoff；在其中直接执行 `pnpm`、`npm`，或在外部系统终端运行命令，都不会获得这项保护。
+ 
+ ## 安装恢复边界
+ 
+@@ -178,7 +180,7 @@ Add 成功后，系统会在开放重启许可前封存白名单文件的结果
+ 
+ - npm 名称和 monorepo package 边界已经确立。
+ - 目录来源、信任规则和集成决策已经记录。
+-- Host/Client package 已作为 DSH Desktop 内置实现交付。
++- Host/Client package 已作为 AI Buddy 内置实现交付。
+ 
+ ### Phase 1：目录市场壳——已交付并内置
+ 
+diff --git a/dsh-community-market/src/adapters/company-store.ts b/dsh-community-market/src/adapters/company-store.ts
+new file mode 100644
+index 0000000..791b517
+--- /dev/null
++++ b/dsh-community-market/src/adapters/company-store.ts
+@@ -0,0 +1,25 @@
++/**
++ * Company Store built-in adapter for dsh-community-market.
++ *
++ * NEW key `company-store` — do not replace or retarget `dsh-1024store`.
++ * Placeholder domain matches the company Store fork until DNS is real.
++ *
++ * Apply into: dsh-community-market/src/adapters/company-store.ts
++ */
++import { createDsh1024StyleStoreAdapter } from './dsh-1024-style-store.js'
++
++export const COMPANY_STORE_KEY = 'company-store'
++/** Placeholder — swap with the real public company Store apex before release. */
++export const COMPANY_STORE_ENDPOINT = 'https://plugins.company.example/api/v1/plugins'
++export const COMPANY_STORE_HOSTNAME = 'plugins.company.example'
++export const COMPANY_STORE_PROVIDER_ID = 'com.company.store.catalog'
++export const COMPANY_STORE_ADAPTER_ID = 'market.company-store-v1'
++
++export const companyStoreAdapter = createDsh1024StyleStoreAdapter({
++  key: COMPANY_STORE_KEY,
++  endpoint: COMPANY_STORE_ENDPOINT,
++  hostname: COMPANY_STORE_HOSTNAME,
++  providerId: COMPANY_STORE_PROVIDER_ID,
++  adapterId: COMPANY_STORE_ADAPTER_ID,
++  errorLabel: 'Company Store',
++})
+diff --git a/dsh-community-market/src/adapters/dsh-1024-style-store.ts b/dsh-community-market/src/adapters/dsh-1024-style-store.ts
+new file mode 100644
+index 0000000..e483410
+--- /dev/null
++++ b/dsh-community-market/src/adapters/dsh-1024-style-store.ts
+@@ -0,0 +1,488 @@
++/**
++ * Shared 1024Store-style catalog adapter factory.
++ *
++ * Extracted so official `dsh-1024store` and company `company-store` share one
++ * parser. Hostname / endpoint / providerId / adapterId are compile-time config
++ * only — never taken from remote manifests.
++ *
++ * Apply into: dsh-community-market/src/adapters/dsh-1024-style-store.ts
++ * Upstream reference: anywhere-labs/deepseek-harness-desktop (dsh-community-market)
++ */
++import type { CatalogAdapter, CatalogFetchContext } from '../contracts/types.js'
++import type { CatalogQuery } from '../contracts/generated/catalog-query.js'
++import type { CatalogSnapshot } from '../contracts/generated/catalog-snapshot.js'
++import { parseCatalogSnapshot } from '../contracts/validate.js'
++import { normalizeRepositoryIdentity } from '../contracts/identity.js'
++
++export interface Dsh1024StyleStoreConfig {
++  readonly key: string
++  readonly endpoint: string
++  readonly hostname: string
++  readonly providerId: string
++  readonly adapterId: string
++  /** Short label used in thrown Error messages. */
++  readonly errorLabel: string
++}
++
++export interface Dsh1024StoreRawItem {
++  readonly id?: unknown
++  readonly name?: unknown
++  readonly owner?: unknown
++  readonly url?: unknown
++  readonly category?: unknown
++  readonly description?: unknown
++  readonly pushedAt?: unknown
++  readonly added?: unknown
++  readonly stars?: unknown
++  readonly installCount?: unknown
++  readonly installMethods?: unknown
++  readonly media?: unknown
++}
++
++interface Dsh1024StoreInstallMethod {
++  readonly kind?: unknown
++  readonly spec?: unknown
++  readonly command?: unknown
++  readonly verification?: unknown
++  readonly code?: unknown
++  readonly requiresBuildAllowance?: unknown
++  readonly revision?: unknown
++}
++
++interface Dsh1024StoreMeta {
++  readonly updated?: unknown
++  readonly generatedAt?: unknown
++  readonly revision?: unknown
++  readonly total?: unknown
++}
++
++interface Dsh1024StoreCatalog {
++  readonly packages?: unknown
++  readonly meta?: unknown
++}
++
++interface RegistryCandidate {
++  readonly item: CatalogSnapshot['items'][number]
++  readonly mediaCandidates: readonly MediaCandidate[]
++  readonly stars: number
++  readonly downloads: number
++  readonly updatedAt: number
++}
++
++interface MediaCandidate {
++  readonly remoteUrl: string
++  readonly role: 'plugin-icon' | 'publisher-avatar'
++  readonly alt?: string
++  readonly allowedHostnames: readonly string[]
++}
++
++const GITHUB_OWNER_PATTERN = /^[a-z0-9][a-z0-9-]{0,99}$/iu
++const GITHUB_REPOSITORY_PATTERN = /^[a-z0-9._-]{1,100}$/iu
++const NPM_PACKAGE_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u
++const STABLE_SEMVER_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
++
++function plainText(value: unknown, max: number, fallback: string): string {
++  if (typeof value !== 'string' || value.length === 0 || value.length > max
++    || /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)) return fallback
++  return value
++}
++
++function completeCatalogQuery(query: CatalogQuery): boolean {
++  return query.q === undefined
++    && (query.category === undefined || query.category.length === 0)
++    && (query.capability === undefined || query.capability.length === 0)
++}
++
++export function createDsh1024StyleStoreAdapter(config: Dsh1024StyleStoreConfig): CatalogAdapter {
++  const label = config.errorLabel
++
++  function providerTotal(meta: Dsh1024StoreMeta, receivedPackages: number): number | undefined {
++    const total = meta.total
++    if (total === undefined) return undefined
++    if (typeof total !== 'number' || !Number.isSafeInteger(total) || total > 10_000) {
++      throw new Error(`${label} provider total is inconsistent`)
++    }
++    if (total < receivedPackages) return undefined
++    return total
++  }
++
++  function reviewedNpmTarget(item: Dsh1024StoreRawItem): { name: string; version: string } | undefined {
++    if (!Array.isArray(item.installMethods)) return undefined
++    const targets = new Map<string, { name: string; version: string }>()
++    for (const value of item.installMethods) {
++      if (value === null || typeof value !== 'object' || Array.isArray(value)) continue
++      const method = value as Dsh1024StoreInstallMethod
++      if (
++        method.kind !== 'npm'
++        || method.verification !== 'verified'
++        || method.code !== 'repository_backlink'
++        || method.requiresBuildAllowance !== false
++        || typeof method.spec !== 'string'
++        || typeof method.revision !== 'string'
++        || !NPM_PACKAGE_PATTERN.test(method.spec)
++        || !STABLE_SEMVER_PATTERN.test(method.revision)
++      ) continue
++      targets.set(`${method.spec}@${method.revision}`, { name: method.spec, version: method.revision })
++    }
++    return targets.size === 1 ? targets.values().next().value : undefined
++  }
++
++  function repositoryFromItem(item: Dsh1024StoreRawItem): { url: string; subdirectory?: string } | undefined {
++    try {
++      if (typeof item.url !== 'string') return undefined
++      const suppliedUrl = new URL(item.url)
++      const suppliedPath = suppliedUrl.pathname.split('/').filter(Boolean)
++      if (
++        suppliedUrl.protocol !== 'https:'
++        || suppliedUrl.hostname.toLowerCase() !== 'github.com'
++        || suppliedUrl.username
++        || suppliedUrl.password
++        || suppliedUrl.search
++        || suppliedUrl.hash
++        || suppliedPath.length !== 2
++      ) return undefined
++      const owner = suppliedPath[0]!
++      const repository = suppliedPath[1]!.replace(/\.git$/iu, '')
++      if (!GITHUB_OWNER_PATTERN.test(owner) || !GITHUB_REPOSITORY_PATTERN.test(repository)) return undefined
++      const parts = typeof item.id === 'string' ? item.id.split('/').filter(Boolean) : []
++      const idMatchesRepository = parts.length >= 2
++        && parts[0]!.toLowerCase() === owner.toLowerCase()
++        && parts[1]!.replace(/\.git$/iu, '').toLowerCase() === repository.toLowerCase()
++      return normalizeRepositoryIdentity({
++        url: `https://github.com/${owner}/${repository}`,
++        ...(idMatchesRepository && parts.length > 2 ? { subdirectory: parts.slice(2).join('/') } : {}),
++      })
++    } catch {
++      return undefined
++    }
++  }
++
++  function githubOwner(repositoryUrl: string): string | undefined {
++    try {
++      const url = new URL(repositoryUrl)
++      const owner = url.pathname.split('/').filter(Boolean)[0]
++      return owner !== undefined && GITHUB_OWNER_PATTERN.test(owner)
++        ? owner.toLowerCase()
++        : undefined
++    } catch {
++      return undefined
++    }
++  }
++
++  function explicitIcon(item: Dsh1024StoreRawItem): Omit<MediaCandidate, 'role'> | undefined {
++    if (item.media === null || typeof item.media !== 'object' || Array.isArray(item.media)) return undefined
++    const icon = (item.media as Record<string, unknown>).icon
++    if (icon === null || typeof icon !== 'object' || Array.isArray(icon)) return undefined
++    const candidate = icon as Record<string, unknown>
++    if (typeof candidate.url !== 'string') return undefined
++    try {
++      const url = new URL(candidate.url)
++      const hostname = url.hostname.toLowerCase()
++      if (url.protocol !== 'https:' || url.username || url.password || url.hash
++        || ![config.hostname, 'github.com', 'avatars.githubusercontent.com'].includes(hostname)) return undefined
++      const alt = plainText(candidate.alt, 240, '')
++      return {
++        remoteUrl: url.href,
++        ...(alt ? { alt } : {}),
++        allowedHostnames: hostname === 'github.com'
++          ? ['github.com', 'avatars.githubusercontent.com']
++          : [hostname],
++      }
++    } catch {
++      return undefined
++    }
++  }
++
++  function mediaCandidates(
++    item: Dsh1024StoreRawItem,
++    repositoryUrl: string,
++  ): readonly MediaCandidate[] {
++    const explicit = explicitIcon(item)
++    const owner = githubOwner(repositoryUrl)
++    return [
++      ...(explicit === undefined ? [] : [{ ...explicit, role: 'plugin-icon' as const }]),
++      ...(owner === undefined ? [] : [{
++        remoteUrl: `https://github.com/${owner}.png?size=96`,
++        role: 'publisher-avatar' as const,
++        alt: owner,
++        allowedHostnames: ['github.com', 'avatars.githubusercontent.com'],
++      }]),
++    ]
++  }
++
++  function resolvedMedia(
++    candidates: readonly MediaCandidate[],
++    itemId: string,
++    context: CatalogFetchContext,
++  ): CatalogSnapshot['items'][number]['media'] | undefined {
++    for (const candidate of candidates) {
++      try {
++        const assetRef = context.media.register({
++          ...candidate,
++          sourceRecordId: context.source.sourceRecordId,
++          itemId,
++        })
++        return { icon: { assetRef, role: candidate.role, ...(candidate.alt === undefined ? {} : { alt: candidate.alt }) } }
++      } catch {
++        // A bad optional image must not make an otherwise valid catalog item disappear.
++      }
++    }
++    return undefined
++  }
++
++  function normalizedItem(
++    entry: unknown,
++    context: CatalogFetchContext,
++    locale: string | undefined,
++  ): RegistryCandidate | undefined {
++    try {
++      if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return undefined
++      const item = entry as Dsh1024StoreRawItem
++      const id = plainText(item.id, 160, '')
++      const name = plainText(item.name, 120, '')
++      if (!id || !name || !/^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$/u.test(id)) return undefined
++      const repository = repositoryFromItem(item)
++      if (repository === undefined) return undefined
++      const descriptionValue = item.description
++      const description = descriptionValue !== null && typeof descriptionValue === 'object'
++        ? (descriptionValue as Record<string, unknown>)
++        : {}
++      const prefersChinese = locale?.toLowerCase().startsWith('zh') ?? false
++      const summary = plainText(
++        prefersChinese ? description.zh ?? description.en : description.en ?? description.zh,
++        1000,
++        name,
++      )
++      const category = typeof item.category === 'string' && /^[a-z0-9][a-z0-9._:-]*$/u.test(item.category)
++        ? item.category
++        : undefined
++      const repositoryOwner = githubOwner(repository.url)
++      const suppliedOwner = plainText(item.owner, 120, '')
++      const owner = repositoryOwner !== undefined && suppliedOwner.toLowerCase() === repositoryOwner
++        ? suppliedOwner
++        : repositoryOwner
++      const pushedAt = typeof item.pushedAt === 'string' && !Number.isNaN(Date.parse(item.pushedAt))
++        ? new Date(item.pushedAt).toISOString()
++        : undefined
++      const npmTarget = reviewedNpmTarget(item)
++      const addedAt = typeof item.added === 'string' && !Number.isNaN(Date.parse(item.added))
++        ? Date.parse(item.added)
++        : 0
++      const normalized: CatalogSnapshot['items'][number] = {
++        id,
++        name,
++        displayName: name,
++        summary,
++        ...(descriptionValue === undefined ? {} : { description: summary }),
++        ...(category === undefined ? {} : { categories: [category] }),
++        repository,
++        ...(npmTarget === undefined ? {} : {
++          latestVersion: npmTarget.version,
++          package: { registry: 'npm' as const, name: npmTarget.name },
++        }),
++        ...(owner === undefined ? {} : { publisher: { name: owner, url: `https://github.com/${owner}` } }),
++        ...(pushedAt === undefined ? {} : { updatedAt: pushedAt }),
++        provenance: {
++          sourceRecordId: context.source.sourceRecordId,
++          providerId: context.source.providerId,
++          itemId: id,
++        },
++      }
++      return {
++        item: normalized,
++        mediaCandidates: mediaCandidates(item, repository.url),
++        stars: typeof item.stars === 'number' && Number.isFinite(item.stars) ? item.stars : 0,
++        downloads: typeof item.installCount === 'number' && Number.isFinite(item.installCount) ? item.installCount : 0,
++        updatedAt: pushedAt === undefined ? addedAt : Date.parse(pushedAt),
++      }
++    } catch {
++      return undefined
++    }
++  }
++
++  function compareCandidates(left: RegistryCandidate, right: RegistryCandidate, query: CatalogQuery): number {
++    if (query.sort === 'name') return left.item.displayName.localeCompare(right.item.displayName, 'en', { sensitivity: 'base' })
++    if (query.sort === 'updated') return right.updatedAt - left.updatedAt || right.stars - left.stars
++    if (query.sort === 'downloads') return right.downloads - left.downloads || right.stars - left.stars
++    return right.stars - left.stars || left.item.displayName.localeCompare(right.item.displayName, 'en', { sensitivity: 'base' })
++  }
++
++  function buildSnapshot(value: unknown, context: CatalogFetchContext, finalUrl: string, query: CatalogQuery): CatalogSnapshot {
++    if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} response is not an object`)
++    const raw = value as Dsh1024StoreCatalog
++    if (!Array.isArray(raw.packages) || raw.packages.length > 10_000) throw new Error(`${label} catalog is invalid`)
++    if (query.cursor !== undefined && !/^\d+$/u.test(query.cursor)) throw new Error(`${label} cursor is invalid`)
++    const requestedCategories = new Set(query.category ?? [])
++    const search = query.q?.toLocaleLowerCase('en-US')
++    const candidates = raw.packages
++      .map(entry => normalizedItem(entry, context, query.locale))
++      .filter((candidate): candidate is RegistryCandidate => candidate !== undefined)
++      .filter(candidate => requestedCategories.size === 0
++        || candidate.item.categories?.some(category => requestedCategories.has(category)) === true)
++      .filter(() => query.capability === undefined || query.capability.length === 0)
++      .filter(candidate => search === undefined || [
++        candidate.item.id,
++        candidate.item.displayName,
++        candidate.item.publisher?.name ?? '',
++        candidate.item.summary,
++      ].some(value => value.toLocaleLowerCase('en-US').includes(search)))
++      .sort((left, right) => compareCandidates(left, right, query))
++    const offset = Number(query.cursor ?? 0)
++    if (!Number.isSafeInteger(offset) || offset < 0 || offset > candidates.length) throw new Error(`${label} cursor is invalid`)
++    const limit = Math.min(query.limit ?? 50, 50)
++    const end = Math.min(offset + limit, candidates.length)
++    const meta = raw.meta !== null && typeof raw.meta === 'object' && !Array.isArray(raw.meta)
++      ? raw.meta as Dsh1024StoreMeta
++      : {}
++    const generatedAt = typeof meta.generatedAt === 'string' ? meta.generatedAt : meta.updated
++    const providerGeneratedAt = typeof generatedAt === 'string' && !Number.isNaN(Date.parse(generatedAt))
++      ? new Date(generatedAt).toISOString()
++      : undefined
++    const providerRevision = plainText(meta.revision, 160, '') || undefined
++    const total = completeCatalogQuery(query)
++      ? providerTotal(meta, raw.packages.length) ?? candidates.length
++      : candidates.length
++    return parseCatalogSnapshot({
++      schemaVersion: '1.0.0',
++      source: {
++        sourceRecordId: context.source.sourceRecordId,
++        providerId: context.source.providerId,
++        adapterId: context.source.adapterId,
++        registrationKind: context.source.registrationKind,
++        fetchedAt: new Date().toISOString(),
++        finalUrl,
++        ...(providerGeneratedAt === undefined ? {} : { providerGeneratedAt }),
++        ...(providerRevision === undefined ? {} : { providerRevision }),
++      },
++      items: candidates.slice(offset, end).map(candidate => {
++        const media = resolvedMedia(candidate.mediaCandidates, candidate.item.id, context)
++        return media === undefined ? candidate.item : { ...candidate.item, media }
++      }),
++      page: end < candidates.length
++        ? { nextCursor: String(end), total }
++        : { total },
++    })
++  }
++
++  function buildCatalogScanSnapshots(
++    value: unknown,
++    context: CatalogFetchContext,
++    finalUrl: string,
++    locale: string | undefined,
++  ): readonly CatalogSnapshot[] {
++    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
++      throw new Error(`${label} response is not an object`)
++    }
++    const raw = value as Dsh1024StoreCatalog
++    if (!Array.isArray(raw.packages) || raw.packages.length > 10_000) {
++      throw new Error(`${label} catalog is invalid`)
++    }
++    context.signal.throwIfAborted()
++
++    const items: CatalogSnapshot['items'][number][] = []
++    const seen = new Set<string>()
++    for (const entry of raw.packages) {
++      const candidate = normalizedItem(entry, context, locale)
++      if (candidate === undefined) continue
++      if (seen.has(candidate.item.id)) throw new Error(`${label} catalog contains duplicate item IDs`)
++      seen.add(candidate.item.id)
++      if (
++        candidate.item.package?.registry === 'npm'
++        && candidate.item.latestVersion !== undefined
++        && candidate.item.repository !== undefined
++      ) {
++        const media = resolvedMedia(candidate.mediaCandidates, candidate.item.id, context)
++        const item: CatalogSnapshot['items'][number] = {
++          ...candidate.item,
++          repository: candidate.item.repository,
++          latestVersion: candidate.item.latestVersion,
++          package: candidate.item.package,
++          ...(media === undefined ? {} : { media }),
++        }
++        items.push(item)
++      } else {
++        items.push(candidate.item)
++      }
++    }
++
++    const meta = raw.meta !== null && typeof raw.meta === 'object' && !Array.isArray(raw.meta)
++      ? raw.meta as Dsh1024StoreMeta
++      : {}
++    const generatedAt = typeof meta.generatedAt === 'string' ? meta.generatedAt : meta.updated
++    const providerGeneratedAt = typeof generatedAt === 'string' && !Number.isNaN(Date.parse(generatedAt))
++      ? new Date(generatedAt).toISOString()
++      : undefined
++    const providerRevision = plainText(meta.revision, 160, '') || undefined
++    const total = providerTotal(meta, raw.packages.length) ?? items.length
++    if (total !== items.length) throw new Error(`${label} scan did not reach the provider total`)
++    const fetchedAt = new Date().toISOString()
++    const snapshots: CatalogSnapshot[] = []
++    for (let offset = 0; offset < items.length; offset += 100) {
++      snapshots.push(parseCatalogSnapshot({
++        schemaVersion: '1.0.0',
++        source: {
++          sourceRecordId: context.source.sourceRecordId,
++          providerId: context.source.providerId,
++          adapterId: context.source.adapterId,
++          registrationKind: context.source.registrationKind,
++          fetchedAt,
++          finalUrl,
++          ...(providerGeneratedAt === undefined ? {} : { providerGeneratedAt }),
++          ...(providerRevision === undefined ? {} : { providerRevision }),
++        },
++        items: items.slice(offset, offset + 100),
++        page: { total },
++      }))
++    }
++    if (snapshots.length === 0) {
++      snapshots.push(parseCatalogSnapshot({
++        schemaVersion: '1.0.0',
++        source: {
++          sourceRecordId: context.source.sourceRecordId,
++          providerId: context.source.providerId,
++          adapterId: context.source.adapterId,
++          registrationKind: context.source.registrationKind,
++          fetchedAt,
++          finalUrl,
++          ...(providerGeneratedAt === undefined ? {} : { providerGeneratedAt }),
++          ...(providerRevision === undefined ? {} : { providerRevision }),
++        },
++        items: [],
++        page: { total: 0 },
++      }))
++    }
++    return snapshots
++  }
++
++  return {
++    adapterId: config.adapterId,
++    async fetch(queryValue, context) {
++      const query = { ...queryValue, limit: Math.min(queryValue.limit ?? 50, 50) }
++      const expectedOrigin = new URL(config.endpoint).origin
++      const response = await context.http.getJson(
++        config.endpoint,
++        context.signal,
++        { allowedOrigin: expectedOrigin },
++      )
++      let finalOrigin: string
++      try { finalOrigin = new URL(response.finalUrl).origin }
++      catch { throw new Error(`${label} final URL is invalid`) }
++      if (finalOrigin !== expectedOrigin) throw new Error(`${label} response changed the reviewed provider origin`)
++      return buildSnapshot(response.value, context, response.finalUrl, query)
++    },
++    async scanCatalog(query, context) {
++      const expectedOrigin = new URL(config.endpoint).origin
++      const response = await context.http.getJson(
++        config.endpoint,
++        context.signal,
++        { allowedOrigin: expectedOrigin },
++      )
++      context.signal.throwIfAborted()
++      let finalOrigin: string
++      try { finalOrigin = new URL(response.finalUrl).origin }
++      catch { throw new Error(`${label} final URL is invalid`) }
++      if (finalOrigin !== expectedOrigin) throw new Error(`${label} response changed the reviewed provider origin`)
++      return buildCatalogScanSnapshots(response.value, context, response.finalUrl, query.locale)
++    },
++  }
++}
+diff --git a/dsh-community-market/src/adapters/dsh-1024store.ts b/dsh-community-market/src/adapters/dsh-1024store.ts
+index effede6..0d2b31f 100644
+--- a/dsh-community-market/src/adapters/dsh-1024store.ts
++++ b/dsh-community-market/src/adapters/dsh-1024store.ts
+@@ -1,8 +1,11 @@
+-import type { CatalogAdapter, CatalogFetchContext } from '../contracts/types.js'
+-import type { CatalogQuery } from '../contracts/generated/catalog-query.js'
+-import type { CatalogSnapshot } from '../contracts/generated/catalog-snapshot.js'
+-import { parseCatalogSnapshot } from '../contracts/validate.js'
+-import { normalizeRepositoryIdentity } from '../contracts/identity.js'
++/**
++ * Official DSH 1024Store adapter — thin wrapper over the shared factory.
++ * Replaces the previous monolithic `dsh-1024store.ts` after extracting
++ * `dsh-1024-style-store.ts`. Behavior and constants must stay identical.
++ *
++ * Apply into: dsh-community-market/src/adapters/dsh-1024store.ts
++ */
++import { createDsh1024StyleStoreAdapter } from './dsh-1024-style-store.js'
+ 
+ export const DSH_1024STORE_KEY = 'dsh-1024store'
+ export const DSH_1024STORE_ENDPOINT = 'https://deepseek1024.com/api/v1/plugins'
+@@ -10,471 +13,13 @@ export const DSH_1024STORE_HOSTNAME = 'deepseek1024.com'
+ export const DSH_1024STORE_PROVIDER_ID = 'com.deepseek1024.catalog'
+ export const DSH_1024STORE_ADAPTER_ID = 'market.dsh-1024store-v1'
+ 
+-export interface Dsh1024StoreRawItem {
+-  readonly id?: unknown
+-  readonly name?: unknown
+-  readonly owner?: unknown
+-  readonly url?: unknown
+-  readonly category?: unknown
+-  readonly description?: unknown
+-  readonly pushedAt?: unknown
+-  readonly added?: unknown
+-  readonly stars?: unknown
+-  readonly installCount?: unknown
+-  readonly installMethods?: unknown
+-  readonly media?: unknown
+-}
+-
+-interface Dsh1024StoreInstallMethod {
+-  readonly kind?: unknown
+-  readonly spec?: unknown
+-  readonly command?: unknown
+-  readonly verification?: unknown
+-  readonly code?: unknown
+-  readonly requiresBuildAllowance?: unknown
+-  readonly revision?: unknown
+-}
+-
+-interface Dsh1024StoreMeta {
+-  readonly updated?: unknown
+-  readonly generatedAt?: unknown
+-  readonly revision?: unknown
+-  readonly total?: unknown
+-}
+-
+-interface Dsh1024StoreCatalog {
+-  readonly packages?: unknown
+-  readonly meta?: unknown
+-}
+-
+-interface RegistryCandidate {
+-  readonly item: CatalogSnapshot['items'][number]
+-  readonly mediaCandidates: readonly MediaCandidate[]
+-  readonly stars: number
+-  readonly downloads: number
+-  readonly updatedAt: number
+-}
+-
+-interface MediaCandidate {
+-  readonly remoteUrl: string
+-  readonly role: 'plugin-icon' | 'publisher-avatar'
+-  readonly alt?: string
+-  readonly allowedHostnames: readonly string[]
+-}
+-
+-const GITHUB_OWNER_PATTERN = /^[a-z0-9][a-z0-9-]{0,99}$/iu
+-const GITHUB_REPOSITORY_PATTERN = /^[a-z0-9._-]{1,100}$/iu
+-const NPM_PACKAGE_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u
+-const STABLE_SEMVER_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u
+-
+-function plainText(value: unknown, max: number, fallback: string): string {
+-  if (typeof value !== 'string' || value.length === 0 || value.length > max
+-    || /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)) return fallback
+-  return value
+-}
+-
+-function completeCatalogQuery(query: CatalogQuery): boolean {
+-  return query.q === undefined
+-    && (query.category === undefined || query.category.length === 0)
+-    && (query.capability === undefined || query.capability.length === 0)
+-}
+-
+-function providerTotal(meta: Dsh1024StoreMeta, receivedPackages: number): number | undefined {
+-  const total = meta.total
+-  if (total === undefined) return undefined
+-  if (typeof total !== 'number' || !Number.isSafeInteger(total) || total > 10_000) {
+-    throw new Error('1024Store provider total is inconsistent')
+-  }
+-  if (total < receivedPackages) return undefined
+-  return total
+-}
+-
+-/**
+- * Convert only one provider-reviewed npm target into non-executable catalog
+- * identity. The Host still revalidates the exact version against the npm
+- * registry before it can create an install intent.
+- */
+-function reviewedNpmTarget(item: Dsh1024StoreRawItem): { name: string; version: string } | undefined {
+-  if (!Array.isArray(item.installMethods)) return undefined
+-  const targets = new Map<string, { name: string; version: string }>()
+-  for (const value of item.installMethods) {
+-    if (value === null || typeof value !== 'object' || Array.isArray(value)) continue
+-    const method = value as Dsh1024StoreInstallMethod
+-    if (
+-      method.kind !== 'npm'
+-      || method.verification !== 'verified'
+-      || method.code !== 'repository_backlink'
+-      || method.requiresBuildAllowance !== false
+-      || typeof method.spec !== 'string'
+-      || typeof method.revision !== 'string'
+-      || !NPM_PACKAGE_PATTERN.test(method.spec)
+-      || !STABLE_SEMVER_PATTERN.test(method.revision)
+-    ) continue
+-    targets.set(`${method.spec}@${method.revision}`, { name: method.spec, version: method.revision })
+-  }
+-  return targets.size === 1 ? targets.values().next().value : undefined
+-}
+-
+-function repositoryFromItem(item: Dsh1024StoreRawItem): { url: string; subdirectory?: string } | undefined {
+-  try {
+-    if (typeof item.url !== 'string') return undefined
+-    const suppliedUrl = new URL(item.url)
+-    const suppliedPath = suppliedUrl.pathname.split('/').filter(Boolean)
+-    if (
+-      suppliedUrl.protocol !== 'https:'
+-      || suppliedUrl.hostname.toLowerCase() !== 'github.com'
+-      || suppliedUrl.username
+-      || suppliedUrl.password
+-      || suppliedUrl.search
+-      || suppliedUrl.hash
+-      || suppliedPath.length !== 2
+-    ) return undefined
+-    const owner = suppliedPath[0]!
+-    const repository = suppliedPath[1]!.replace(/\.git$/iu, '')
+-    if (!GITHUB_OWNER_PATTERN.test(owner) || !GITHUB_REPOSITORY_PATTERN.test(repository)) return undefined
+-    const parts = typeof item.id === 'string' ? item.id.split('/').filter(Boolean) : []
+-    const idMatchesRepository = parts.length >= 2
+-      && parts[0]!.toLowerCase() === owner.toLowerCase()
+-      && parts[1]!.replace(/\.git$/iu, '').toLowerCase() === repository.toLowerCase()
+-    return normalizeRepositoryIdentity({
+-      // The provider item ID is source-local identity, not repository identity.
+-      // Repository renames and transfers make the canonical URL authoritative.
+-      url: `https://github.com/${owner}/${repository}`,
+-      ...(idMatchesRepository && parts.length > 2 ? { subdirectory: parts.slice(2).join('/') } : {}),
+-    })
+-  } catch {
+-    return undefined
+-  }
+-}
+-
+-function githubOwner(repositoryUrl: string): string | undefined {
+-  try {
+-    const url = new URL(repositoryUrl)
+-    const owner = url.pathname.split('/').filter(Boolean)[0]
+-    return owner !== undefined && GITHUB_OWNER_PATTERN.test(owner)
+-      ? owner.toLowerCase()
+-      : undefined
+-  } catch {
+-    return undefined
+-  }
+-}
+-
+-function explicitIcon(item: Dsh1024StoreRawItem): Omit<MediaCandidate, 'role'> | undefined {
+-  if (item.media === null || typeof item.media !== 'object' || Array.isArray(item.media)) return undefined
+-  const icon = (item.media as Record<string, unknown>).icon
+-  if (icon === null || typeof icon !== 'object' || Array.isArray(icon)) return undefined
+-  const candidate = icon as Record<string, unknown>
+-  if (typeof candidate.url !== 'string') return undefined
+-  try {
+-    const url = new URL(candidate.url)
+-    const hostname = url.hostname.toLowerCase()
+-    if (url.protocol !== 'https:' || url.username || url.password || url.hash
+-      || ![DSH_1024STORE_HOSTNAME, 'github.com', 'avatars.githubusercontent.com'].includes(hostname)) return undefined
+-    const alt = plainText(candidate.alt, 240, '')
+-    return {
+-      remoteUrl: url.href,
+-      ...(alt ? { alt } : {}),
+-      allowedHostnames: hostname === 'github.com'
+-        ? ['github.com', 'avatars.githubusercontent.com']
+-        : [hostname],
+-    }
+-  } catch {
+-    return undefined
+-  }
+-}
+-
+-function mediaCandidates(
+-  item: Dsh1024StoreRawItem,
+-  repositoryUrl: string,
+-): readonly MediaCandidate[] {
+-  const explicit = explicitIcon(item)
+-  const owner = githubOwner(repositoryUrl)
+-  return [
+-    ...(explicit === undefined ? [] : [{ ...explicit, role: 'plugin-icon' as const }]),
+-    ...(owner === undefined ? [] : [{
+-      remoteUrl: `https://github.com/${owner}.png?size=96`,
+-      role: 'publisher-avatar' as const,
+-      alt: owner,
+-      allowedHostnames: ['github.com', 'avatars.githubusercontent.com'],
+-    }]),
+-  ]
+-}
+-
+-function resolvedMedia(
+-  candidates: readonly MediaCandidate[],
+-  itemId: string,
+-  context: CatalogFetchContext,
+-): CatalogSnapshot['items'][number]['media'] | undefined {
+-  for (const candidate of candidates) {
+-    try {
+-      const assetRef = context.media.register({
+-        ...candidate,
+-        sourceRecordId: context.source.sourceRecordId,
+-        itemId,
+-      })
+-      return { icon: { assetRef, role: candidate.role, ...(candidate.alt === undefined ? {} : { alt: candidate.alt }) } }
+-    } catch {
+-      // A bad optional image must not make an otherwise valid catalog item disappear.
+-    }
+-  }
+-  return undefined
+-}
+-
+-function normalizedItem(
+-  entry: unknown,
+-  context: CatalogFetchContext,
+-  locale: string | undefined,
+-): RegistryCandidate | undefined {
+-  try {
+-    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return undefined
+-    const item = entry as Dsh1024StoreRawItem
+-    const id = plainText(item.id, 160, '')
+-    const name = plainText(item.name, 120, '')
+-    if (!id || !name || !/^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$/u.test(id)) return undefined
+-    const repository = repositoryFromItem(item)
+-    if (repository === undefined) return undefined
+-    const descriptionValue = item.description
+-    const description = descriptionValue !== null && typeof descriptionValue === 'object'
+-      ? (descriptionValue as Record<string, unknown>)
+-      : {}
+-    const prefersChinese = locale?.toLowerCase().startsWith('zh') ?? false
+-    const summary = plainText(
+-      prefersChinese ? description.zh ?? description.en : description.en ?? description.zh,
+-      1000,
+-      name,
+-    )
+-    const category = typeof item.category === 'string' && /^[a-z0-9][a-z0-9._:-]*$/u.test(item.category)
+-      ? item.category
+-      : undefined
+-    const repositoryOwner = githubOwner(repository.url)
+-    const suppliedOwner = plainText(item.owner, 120, '')
+-    const owner = repositoryOwner !== undefined && suppliedOwner.toLowerCase() === repositoryOwner
+-      ? suppliedOwner
+-      : repositoryOwner
+-    const pushedAt = typeof item.pushedAt === 'string' && !Number.isNaN(Date.parse(item.pushedAt))
+-      ? new Date(item.pushedAt).toISOString()
+-      : undefined
+-    const npmTarget = reviewedNpmTarget(item)
+-    const addedAt = typeof item.added === 'string' && !Number.isNaN(Date.parse(item.added))
+-      ? Date.parse(item.added)
+-      : 0
+-    const normalized: CatalogSnapshot['items'][number] = {
+-      id,
+-      name,
+-      displayName: name,
+-      summary,
+-      ...(descriptionValue === undefined ? {} : { description: summary }),
+-      ...(category === undefined ? {} : { categories: [category] }),
+-      repository,
+-      ...(npmTarget === undefined ? {} : {
+-        latestVersion: npmTarget.version,
+-        package: { registry: 'npm' as const, name: npmTarget.name },
+-      }),
+-      ...(owner === undefined ? {} : { publisher: { name: owner, url: `https://github.com/${owner}` } }),
+-      ...(pushedAt === undefined ? {} : { updatedAt: pushedAt }),
+-      provenance: {
+-        sourceRecordId: context.source.sourceRecordId,
+-        providerId: context.source.providerId,
+-        itemId: id,
+-      },
+-    }
+-    return {
+-      item: normalized,
+-      mediaCandidates: mediaCandidates(item, repository.url),
+-      stars: typeof item.stars === 'number' && Number.isFinite(item.stars) ? item.stars : 0,
+-      downloads: typeof item.installCount === 'number' && Number.isFinite(item.installCount) ? item.installCount : 0,
+-      updatedAt: pushedAt === undefined ? addedAt : Date.parse(pushedAt),
+-    }
+-  } catch {
+-    return undefined
+-  }
+-}
+-
+-function compareCandidates(left: RegistryCandidate, right: RegistryCandidate, query: CatalogQuery): number {
+-  if (query.sort === 'name') return left.item.displayName.localeCompare(right.item.displayName, 'en', { sensitivity: 'base' })
+-  if (query.sort === 'updated') return right.updatedAt - left.updatedAt || right.stars - left.stars
+-  if (query.sort === 'downloads') return right.downloads - left.downloads || right.stars - left.stars
+-  return right.stars - left.stars || left.item.displayName.localeCompare(right.item.displayName, 'en', { sensitivity: 'base' })
+-}
+-
+-function buildSnapshot(value: unknown, context: CatalogFetchContext, finalUrl: string, query: CatalogQuery): CatalogSnapshot {
+-  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('1024Store response is not an object')
+-  const raw = value as Dsh1024StoreCatalog
+-  if (!Array.isArray(raw.packages) || raw.packages.length > 10_000) throw new Error('1024Store catalog is invalid')
+-  if (query.cursor !== undefined && !/^\d+$/u.test(query.cursor)) throw new Error('1024Store cursor is invalid')
+-  const requestedCategories = new Set(query.category ?? [])
+-  const search = query.q?.toLocaleLowerCase('en-US')
+-  const candidates = raw.packages
+-    .map(entry => normalizedItem(entry, context, query.locale))
+-    .filter((candidate): candidate is RegistryCandidate => candidate !== undefined)
+-    .filter(candidate => requestedCategories.size === 0
+-      || candidate.item.categories?.some(category => requestedCategories.has(category)) === true)
+-    .filter(() => query.capability === undefined || query.capability.length === 0)
+-    .filter(candidate => search === undefined || [
+-      candidate.item.id,
+-      candidate.item.displayName,
+-      candidate.item.publisher?.name ?? '',
+-      candidate.item.summary,
+-    ].some(value => value.toLocaleLowerCase('en-US').includes(search)))
+-    .sort((left, right) => compareCandidates(left, right, query))
+-  const offset = Number(query.cursor ?? 0)
+-  if (!Number.isSafeInteger(offset) || offset < 0 || offset > candidates.length) throw new Error('1024Store cursor is invalid')
+-  const limit = Math.min(query.limit ?? 50, 50)
+-  const end = Math.min(offset + limit, candidates.length)
+-  const meta = raw.meta !== null && typeof raw.meta === 'object' && !Array.isArray(raw.meta)
+-    ? raw.meta as Dsh1024StoreMeta
+-    : {}
+-  const generatedAt = typeof meta.generatedAt === 'string' ? meta.generatedAt : meta.updated
+-  const providerGeneratedAt = typeof generatedAt === 'string' && !Number.isNaN(Date.parse(generatedAt))
+-    ? new Date(generatedAt).toISOString()
+-    : undefined
+-  const providerRevision = plainText(meta.revision, 160, '') || undefined
+-  const total = completeCatalogQuery(query)
+-    ? providerTotal(meta, raw.packages.length) ?? candidates.length
+-    : candidates.length
+-  return parseCatalogSnapshot({
+-    schemaVersion: '1.0.0',
+-    source: {
+-      sourceRecordId: context.source.sourceRecordId,
+-      providerId: context.source.providerId,
+-      adapterId: context.source.adapterId,
+-      registrationKind: context.source.registrationKind,
+-      fetchedAt: new Date().toISOString(),
+-      finalUrl,
+-      ...(providerGeneratedAt === undefined ? {} : { providerGeneratedAt }),
+-      ...(providerRevision === undefined ? {} : { providerRevision }),
+-    },
+-    items: candidates.slice(offset, end).map(candidate => {
+-      const media = resolvedMedia(candidate.mediaCandidates, candidate.item.id, context)
+-      return media === undefined ? candidate.item : { ...candidate.item, media }
+-    }),
+-    page: end < candidates.length
+-      ? { nextCursor: String(end), total }
+-      : { total },
+-  })
+-}
+-
+-function buildCatalogScanSnapshots(
+-  value: unknown,
+-  context: CatalogFetchContext,
+-  finalUrl: string,
+-  locale: string | undefined,
+-): readonly CatalogSnapshot[] {
+-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+-    throw new Error('1024Store response is not an object')
+-  }
+-  const raw = value as Dsh1024StoreCatalog
+-  if (!Array.isArray(raw.packages) || raw.packages.length > 10_000) {
+-    throw new Error('1024Store catalog is invalid')
+-  }
+-  context.signal.throwIfAborted()
+-
+-  const items: CatalogSnapshot['items'][number][] = []
+-  const seen = new Set<string>()
+-  for (const entry of raw.packages) {
+-    const candidate = normalizedItem(entry, context, locale)
+-    if (candidate === undefined) continue
+-    if (seen.has(candidate.item.id)) throw new Error('1024Store catalog contains duplicate item IDs')
+-    seen.add(candidate.item.id)
+-    if (
+-      candidate.item.package?.registry === 'npm'
+-      && candidate.item.latestVersion !== undefined
+-      && candidate.item.repository !== undefined
+-    ) {
+-      // Registration creates only an opaque Host reference. It does not fetch
+-      // remote image bytes during the catalog scan. Browse-only items do not
+-      // consume media references.
+-      const media = resolvedMedia(candidate.mediaCandidates, candidate.item.id, context)
+-      const item: CatalogSnapshot['items'][number] = {
+-        ...candidate.item,
+-        repository: candidate.item.repository,
+-        latestVersion: candidate.item.latestVersion,
+-        package: candidate.item.package,
+-        ...(media === undefined ? {} : { media }),
+-      }
+-      items.push(item)
+-    } else {
+-      items.push(candidate.item)
+-    }
+-  }
+-
+-  const meta = raw.meta !== null && typeof raw.meta === 'object' && !Array.isArray(raw.meta)
+-    ? raw.meta as Dsh1024StoreMeta
+-    : {}
+-  const generatedAt = typeof meta.generatedAt === 'string' ? meta.generatedAt : meta.updated
+-  const providerGeneratedAt = typeof generatedAt === 'string' && !Number.isNaN(Date.parse(generatedAt))
+-    ? new Date(generatedAt).toISOString()
+-    : undefined
+-  const providerRevision = plainText(meta.revision, 160, '') || undefined
+-  const total = providerTotal(meta, raw.packages.length) ?? items.length
+-  if (total !== items.length) throw new Error('1024Store scan did not reach the provider total')
+-  const fetchedAt = new Date().toISOString()
+-  const snapshots: CatalogSnapshot[] = []
+-  for (let offset = 0; offset < items.length; offset += 100) {
+-    snapshots.push(parseCatalogSnapshot({
+-      schemaVersion: '1.0.0',
+-      source: {
+-        sourceRecordId: context.source.sourceRecordId,
+-        providerId: context.source.providerId,
+-        adapterId: context.source.adapterId,
+-        registrationKind: context.source.registrationKind,
+-        fetchedAt,
+-        finalUrl,
+-        ...(providerGeneratedAt === undefined ? {} : { providerGeneratedAt }),
+-        ...(providerRevision === undefined ? {} : { providerRevision }),
+-      },
+-      items: items.slice(offset, offset + 100),
+-      page: { total },
+-    }))
+-  }
+-  if (snapshots.length === 0) {
+-    snapshots.push(parseCatalogSnapshot({
+-      schemaVersion: '1.0.0',
+-      source: {
+-        sourceRecordId: context.source.sourceRecordId,
+-        providerId: context.source.providerId,
+-        adapterId: context.source.adapterId,
+-        registrationKind: context.source.registrationKind,
+-        fetchedAt,
+-        finalUrl,
+-        ...(providerGeneratedAt === undefined ? {} : { providerGeneratedAt }),
+-        ...(providerRevision === undefined ? {} : { providerRevision }),
+-      },
+-      items: [],
+-      page: { total: 0 },
+-    }))
+-  }
+-  return snapshots
+-}
+-
+-export const dsh1024StoreAdapter: CatalogAdapter = {
++export const dsh1024StoreAdapter = createDsh1024StyleStoreAdapter({
++  key: DSH_1024STORE_KEY,
++  endpoint: DSH_1024STORE_ENDPOINT,
++  hostname: DSH_1024STORE_HOSTNAME,
++  providerId: DSH_1024STORE_PROVIDER_ID,
+   adapterId: DSH_1024STORE_ADAPTER_ID,
+-  async fetch(queryValue, context) {
+-    const query = { ...queryValue, limit: Math.min(queryValue.limit ?? 50, 50) }
+-    const expectedOrigin = new URL(DSH_1024STORE_ENDPOINT).origin
+-    const response = await context.http.getJson(
+-      DSH_1024STORE_ENDPOINT,
+-      context.signal,
+-      { allowedOrigin: expectedOrigin },
+-    )
+-    let finalOrigin: string
+-    try { finalOrigin = new URL(response.finalUrl).origin }
+-    catch { throw new Error('1024Store final URL is invalid') }
+-    if (finalOrigin !== expectedOrigin) throw new Error('1024Store response changed the reviewed provider origin')
+-    return buildSnapshot(response.value, context, response.finalUrl, query)
+-  },
+-  async scanCatalog(query, context) {
+-    const expectedOrigin = new URL(DSH_1024STORE_ENDPOINT).origin
+-    const response = await context.http.getJson(
+-      DSH_1024STORE_ENDPOINT,
+-      context.signal,
+-      { allowedOrigin: expectedOrigin },
+-    )
+-    context.signal.throwIfAborted()
+-    let finalOrigin: string
+-    try { finalOrigin = new URL(response.finalUrl).origin }
+-    catch { throw new Error('1024Store final URL is invalid') }
+-    if (finalOrigin !== expectedOrigin) throw new Error('1024Store response changed the reviewed provider origin')
+-    return buildCatalogScanSnapshots(response.value, context, response.finalUrl, query.locale)
+-  },
+-}
++  errorLabel: '1024Store',
++})
++
++export type { Dsh1024StoreRawItem } from './dsh-1024-style-store.js'
+diff --git a/dsh-community-market/src/catalog/service.ts b/dsh-community-market/src/catalog/service.ts
+index 26d1e2f..ac212f2 100644
+--- a/dsh-community-market/src/catalog/service.ts
++++ b/dsh-community-market/src/catalog/service.ts
+@@ -6,6 +6,13 @@ import type { CatalogAdapter, CatalogHttpClient, CatalogMediaRegistry, LocalSour
+ import type { MarketCatalogSourceResult, MarketSourceView } from '../api-types.js'
+ import { DSH_1024STORE_ADAPTER_ID, DSH_1024STORE_ENDPOINT, DSH_1024STORE_KEY, DSH_1024STORE_PROVIDER_ID, dsh1024StoreAdapter } from '../adapters/dsh-1024store.js'
+ import { DSHFIND_ADAPTER_ID, DSHFIND_ENDPOINT, DSHFIND_KEY, DSHFIND_PROVIDER_ID, dshfindAdapter } from '../adapters/dshfind.js'
++import {
++  COMPANY_STORE_ADAPTER_ID,
++  COMPANY_STORE_ENDPOINT,
++  COMPANY_STORE_KEY,
++  COMPANY_STORE_PROVIDER_ID,
++  companyStoreAdapter,
++} from '../adapters/company-store.js'
+ import { standardHttpAdapter } from '../adapters/standard-http.js'
+ 
+ export interface BuiltInProviderDefinition {
+@@ -52,12 +59,27 @@ export const BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] = [
+     },
+     partnership: true,
+   },
++  {
++    key: COMPANY_STORE_KEY,
++    name: 'Company Store',
++    description: '公司目录，收录≠安全审核。需要用户明确添加并启用。',
++    providerId: COMPANY_STORE_PROVIDER_ID,
++    adapterId: COMPANY_STORE_ADAPTER_ID,
++    endpoint: COMPANY_STORE_ENDPOINT,
++    attribution: {
++      name: '公司插件目录',
++      url: 'https://plugins.company.example',
++      notice: 'Company-reviewed catalog. Listing means inclusion only — not a security audit.',
++    },
++    partnership: true,
++  },
+ ]
+ 
+ const adapters = new Map<string, CatalogAdapter>([
+   [standardHttpAdapter.adapterId, standardHttpAdapter],
+   [dsh1024StoreAdapter.adapterId, dsh1024StoreAdapter],
+   [dshfindAdapter.adapterId, dshfindAdapter],
++  [companyStoreAdapter.adapterId, companyStoreAdapter],
+ ])
+ 
+ const MAX_CATALOG_ITEMS = 10_000
+@@ -107,6 +129,45 @@ function completeItems(index: CatalogFullIndex): readonly CatalogItem[] {
+   return index.snapshots.flatMap(snapshot => snapshot.items)
+ }
+ 
++function localSourceFromView(view: MarketSourceView): LocalSourceRecord {
++  return {
++    sourceRecordId: view.sourceRecordId,
++    registrationKind: view.registrationKind,
++    adapterId: view.adapterId,
++    providerId: view.providerId,
++    ...(view.manifestUrl === undefined ? {} : { manifestUrl: view.manifestUrl }),
++    ...(view.manifest === undefined ? {} : { manifest: view.manifest }),
++    ...(view.builtInProviderKey === undefined ? {} : { builtInProviderKey: view.builtInProviderKey }),
++    enabled: view.enabled,
++    order: view.order,
++  }
++}
++
++function chunkCatalogItems(
++  items: readonly CatalogItem[],
++  template: CatalogSnapshot,
++): readonly CatalogSnapshot[] {
++  const total = items.length
++  if (total === 0) {
++    return [parseCatalogSnapshot({
++      schemaVersion: template.schemaVersion,
++      source: template.source,
++      items: [],
++      page: { total: 0 },
++    })]
++  }
++  const snapshots: CatalogSnapshot[] = []
++  for (let offset = 0; offset < items.length; offset += 100) {
++    snapshots.push(parseCatalogSnapshot({
++      schemaVersion: template.schemaVersion,
++      source: template.source,
++      items: items.slice(offset, offset + 100),
++      page: { total },
++    }))
++  }
++  return snapshots
++}
++
+ function normalizedSearchText(item: CatalogItem): string {
+   return [
+     item.id,
+@@ -207,6 +268,16 @@ export interface CatalogService {
+     query: unknown,
+     scope?: CatalogFetchScope,
+   ): readonly MarketCatalogSourceResult[]
++  /**
++   * For 1024Store, merge a provider `q` search page into the cached homepage
++   * slice so one-click and market search can resolve packages that are not in
++   * the published first page. Does not replace the cached scan.
++   */
++  mergeProviderSearch?(
++    index: CatalogFullIndex,
++    query: unknown,
++    signal: AbortSignal,
++  ): Promise<CatalogFullIndex>
+   invalidateSource(sourceRecordId: string): void
+ }
+ 
+@@ -633,6 +704,39 @@ export class DefaultCatalogService implements CatalogService {
+     }))
+   }
+ 
++  async mergeProviderSearch(
++    index: CatalogFullIndex,
++    value: unknown,
++    signal: AbortSignal,
++  ): Promise<CatalogFullIndex> {
++    const query = normalizeCatalogQuery(value)
++    if (query.q === undefined || index.source.adapterId !== DSH_1024STORE_ADAPTER_ID) {
++      return index
++    }
++    const adapter = adapters.get(index.source.adapterId)
++    if (adapter === undefined) return index
++    const template = index.snapshots[0]
++    if (template === undefined) return index
++    const delegate = this.adapterHttpClients.get(index.source.adapterId) ?? this.http
++    const extra = await adapter.fetch(query, {
++      signal,
++      source: localSourceFromView(index.source),
++      http: delegate,
++      media: this.media,
++    })
++    signal.throwIfAborted()
++    const existing = completeItems(index)
++    const seen = new Set(existing.map(item => item.id))
++    const added = extra.items.filter(item => !seen.has(item.id))
++    if (added.length === 0) return index
++    const items = [...existing, ...added]
++    if (items.length > MAX_CATALOG_ITEMS) throw new Error('catalog scan exceeded the item limit')
++    return {
++      ...index,
++      snapshots: chunkCatalogItems(items, template),
++    }
++  }
++
+   queryCatalog(
+     index: CatalogFullIndex,
+     value: unknown,
+@@ -707,6 +811,9 @@ export class DefaultCatalogService implements CatalogService {
+       ...(scope === undefined ? {} : { expectedSourceRecordId: scope.sourceRecordId }),
+     })
+     signal.throwIfAborted()
+-    return index === undefined ? [] : this.queryCatalog(index, query, scope)
++    if (index === undefined) return []
++    const merged = await this.mergeProviderSearch(index, query, signal)
++    signal.throwIfAborted()
++    return this.queryCatalog(merged, query, scope)
+   }
+ }
+diff --git a/dsh-community-market/src/client/MarketSettingsTab.tsx b/dsh-community-market/src/client/MarketSettingsTab.tsx
+index e2edbc3..f97d746 100644
+--- a/dsh-community-market/src/client/MarketSettingsTab.tsx
++++ b/dsh-community-market/src/client/MarketSettingsTab.tsx
+@@ -975,6 +975,9 @@ export function MarketSurface({ initialView = 'installable', readLocale, t, show
+               )}
+         </Pill>
+       </div>
++      {currentSource?.builtInProviderKey === 'company-store' && (
++        <div className="dshMarketBanner" role="status">{t('companyStoreDisclaimer')}</div>
++      )}
+       <main className="dshMarketMain">
+         {view === 'discover' ? (
+           <DiscoverView
+diff --git a/dsh-community-market/src/client/locales.ts b/dsh-community-market/src/client/locales.ts
+index 2b2388d..39ae887 100644
+--- a/dsh-community-market/src/client/locales.ts
++++ b/dsh-community-market/src/client/locales.ts
+@@ -31,16 +31,16 @@ export const zh = {
+   readOnly: '暂不支持在桌面端自动安装此插件。你仍可查看插件信息和源码仓库。',
+   checkingInstallMethod: '正在确认可用的安装方式...',
+   manualInstallTitle: '手动安装',
+-  manualInstallBody: '以下命令由 DSH Desktop 根据插件信息生成，可能与仓库中的说明不同。请先检查源码，再复制到 DSH 终端执行。',
++  manualInstallBody: '以下命令由 AI Buddy 根据插件信息生成，可能与仓库中的说明不同。请先检查源码，再复制到 DSH 终端执行。',
+   installCommand: '安装命令',
+   manualNotVerified: '这条展示命令没有通过桌面端自动安装所需的完整包验证，请自行确认插件来源、内容和兼容性。',
+   mutableGithubWarning: 'GitHub 安装指向仓库当前 HEAD，内容可能随时变化，无法锁定到本次看到的代码。',
+-  openTerminal: '打开 DSH 终端',
++  openTerminal: '打开 AI Buddy 终端',
+   openingTerminal: '正在打开终端...',
+   desktopActionUnavailable: '当前环境不支持这个桌面操作。',
+-  terminalError: '无法打开 DSH 终端，请从应用菜单手动打开后再复制命令。',
+-  restartError: '无法请求重启 DSH Desktop，请稍后手动重启。',
+-  installableBody: '这里显示从当前来源完整目录中初步筛选出的可安装插件。选择插件后，DSH Desktop 仍会再次验证版本、来源和兼容性。',
++  terminalError: '无法打开 AI Buddy 终端，请从应用菜单手动打开后再复制命令。',
++  restartError: '无法请求重启 AI Buddy，请稍后手动重启。',
++  installableBody: '这里显示从当前来源完整目录中初步筛选出的可安装插件。选择插件后，AI Buddy 仍会再次验证版本、来源和兼容性。',
+   installedBody: '这里显示当前配置中的插件。通过插件市场安装的插件可以卸载；可变插件可以禁用，并在之后重新启用。',
+   install: '安装',
+   uninstall: '卸载',
+@@ -64,8 +64,8 @@ export const zh = {
+   noInstalled: '当前配置没有可管理的插件',
+   noInstalledBody: '当前配置中没有可显示的插件。',
+   loadingInstallations: '正在读取当前配置中的插件...',
+-  desktopRequiredTitle: '需要 DSH Desktop',
+-  desktopUnavailable: '安装、卸载、禁用和启用只在 DSH Desktop 中可用；你仍然可以浏览插件目录。',
++  desktopRequiredTitle: '需要 AI Buddy',
++  desktopUnavailable: '安装、卸载、禁用和启用只在 AI Buddy 中可用；你仍然可以浏览插件目录。',
+   installationsError: '暂时无法读取当前配置的插件清单',
+   previewError: '无法验证这个插件的精确目标，可能并非标准插件。',
+   verificationDetails: '查看详情',
+@@ -80,13 +80,13 @@ export const zh = {
+   installedAt: '安装时间',
+   previewExpires: '确认有效期至',
+   confirmInstallTitle: '确认安装插件',
+-  confirmInstallBody: '请确认 DSH Desktop 验证的 npm 包、版本和目标配置。',
++  confirmInstallBody: '请确认 AI Buddy 验证的 npm 包、版本和目标配置。',
+   confirmUninstallTitle: '确认卸载插件',
+   confirmUninstallBody: '只会卸载当前配置中由插件市场安装并验证过的这个插件。',
+   confirmDisableTitle: '确认禁用外部插件',
+-  confirmDisableBody: 'DSH Desktop 将停止在当前配置中加载这个插件，但不会卸载对应的 npm 包。',
++  confirmDisableBody: 'AI Buddy 将停止在当前配置中加载这个插件，但不会卸载对应的 npm 包。',
+   confirmEnableTitle: '确认启用插件',
+-  confirmEnableBody: 'DSH Desktop 将恢复在当前配置中加载这个插件。对应的代码会在重启后运行。',
++  confirmEnableBody: 'AI Buddy 将恢复在当前配置中加载这个插件。对应的代码会在重启后运行。',
+   confirmInstall: '确认安装',
+   confirmUninstall: '确认卸载',
+   confirmDisable: '确认禁用',
+@@ -99,23 +99,24 @@ export const zh = {
+   operationRiskBeforeContact: '以错误方式安装插件，或者安装未经验证的插件，可能导致软件崩溃或异常。你可以',
+   contactUs: '联系我们',
+   operationRiskAfterContact: '，或者联系插件开发者。',
+-  restartAfterOperation: '操作完成后需要重启 DSH Desktop，改动才会生效。',
++  restartAfterOperation: '操作完成后需要重启 AI Buddy，改动才会生效。',
+   disableWarning: '禁用不会卸载 npm 包，也不会隔离插件代码。',
+-  disableRecoveryWarning: '如果插件导致 DSH Desktop 无法进入此页面，需要按照恢复文档手动处理。',
++  disableRecoveryWarning: '如果插件导致 AI Buddy 无法进入此页面，需要按照恢复文档手动处理。',
+   enableWarning: '启用后，插件会作为本地代码，以你的用户权限运行。请只启用你信任的插件。',
+   disabledRestartRequired: '此插件当前已禁用，可以重新启用。',
+   installComplete: '插件安装完成',
+   uninstallComplete: '插件卸载完成',
+   disableComplete: '插件已设为禁用',
+   enableComplete: '插件已设为启用',
+-  restartRequiredTitle: '需要重启 DSH Desktop',
+-  restartRequiredBody: '请重启 DSH Desktop，让当前配置加载最新的插件状态。',
++  restartRequiredTitle: '需要重启 AI Buddy',
++  restartRequiredBody: '请重启 AI Buddy，让当前配置加载最新的插件状态。',
+   restartLater: '稍后重启',
+   restartNow: '立即重启',
+   restarting: '正在重启...',
+   done: '完成',
+   builtIn: '内置适配器',
+   partner: '合作提供方',
++  companyStoreDisclaimer: '公司目录，收录≠安全审核',
+   sourcePartnershipBefore: '除了添加符合接入格式的自定义来源，也可以',
+   sourcePartnershipContact: '联系我们',
+   sourcePartnershipAfter: '，申请将你的插件市场加入内置合作来源。',
+@@ -181,16 +182,16 @@ export const en: Record<MarketLocaleKey, string> = {
+   readOnly: 'This plugin cannot currently be installed automatically in Desktop. You can still review its details and source repository.',
+   checkingInstallMethod: 'Checking available installation methods...',
+   manualInstallTitle: 'Manual installation',
+-  manualInstallBody: 'DSH Desktop generated this command from the plugin information, so it may differ from the repository instructions. Review the source first, then copy it into DSH Terminal.',
++  manualInstallBody: 'AI Buddy generated this command from the plugin information, so it may differ from the repository instructions. Review the source first, then copy it into DSH Terminal.',
+   installCommand: 'Install command',
+   manualNotVerified: 'This display-only command has not passed the complete package verification required for managed installation. Verify the source, contents, and compatibility yourself.',
+   mutableGithubWarning: 'This GitHub target follows the repository’s current HEAD. Its contents can change and are not pinned to the code shown now.',
+-  openTerminal: 'Open DSH Terminal',
++  openTerminal: 'Open AI Buddy Terminal',
+   openingTerminal: 'Opening terminal...',
+   desktopActionUnavailable: 'This desktop action is not available in the current environment.',
+   terminalError: 'DSH Terminal could not be opened. Open it from the application menu, then copy the command manually.',
+-  restartError: 'DSH Desktop could not be restarted. Restart it manually when convenient.',
+-  installableBody: 'This view shows plugins pre-screened from the current source’s complete catalog. DSH Desktop verifies the version, source, and compatibility again after selection.',
++  restartError: 'AI Buddy could not be restarted. Restart it manually when convenient.',
++  installableBody: 'This view shows plugins pre-screened from the current source’s complete catalog. AI Buddy verifies the version, source, and compatibility again after selection.',
+   installedBody: 'Plugins in the active profile appear here. Plugins installed by Plugin Market can be uninstalled; mutable plugins can be disabled and enabled again later.',
+   install: 'Install',
+   uninstall: 'Uninstall',
+@@ -214,8 +215,8 @@ export const en: Record<MarketLocaleKey, string> = {
+   noInstalled: 'No manageable plugins in the current profile',
+   noInstalledBody: 'There are no plugins to show in the active profile.',
+   loadingInstallations: 'Reading plugins in the active profile...',
+-  desktopRequiredTitle: 'DSH Desktop is required',
+-  desktopUnavailable: 'Install, uninstall, disable, and enable are available only in DSH Desktop. You can still browse the catalog.',
++  desktopRequiredTitle: 'AI Buddy is required',
++  desktopUnavailable: 'Install, uninstall, disable, and enable are available only in AI Buddy. You can still browse the catalog.',
+   installationsError: 'The plugin inventory for the current profile is temporarily unavailable',
+   previewError: 'The exact plugin target could not be verified and may not be a standard plugin.',
+   verificationDetails: 'View details',
+@@ -230,13 +231,13 @@ export const en: Record<MarketLocaleKey, string> = {
+   installedAt: 'Installed at',
+   previewExpires: 'Confirmation expires',
+   confirmInstallTitle: 'Confirm plugin installation',
+-  confirmInstallBody: 'Review the npm package, version, and target profile verified by DSH Desktop.',
++  confirmInstallBody: 'Review the npm package, version, and target profile verified by AI Buddy.',
+   confirmUninstallTitle: 'Confirm plugin removal',
+   confirmUninstallBody: 'Only this plugin’s verified Plugin Market installation in the active profile will be removed.',
+   confirmDisableTitle: 'Confirm external plugin disable',
+-  confirmDisableBody: 'DSH Desktop will stop loading this plugin in the active profile without uninstalling its npm package.',
++  confirmDisableBody: 'AI Buddy will stop loading this plugin in the active profile without uninstalling its npm package.',
+   confirmEnableTitle: 'Confirm plugin enable',
+-  confirmEnableBody: 'DSH Desktop will load this plugin in the active profile again. Its code will run after restart.',
++  confirmEnableBody: 'AI Buddy will load this plugin in the active profile again. Its code will run after restart.',
+   confirmInstall: 'Confirm install',
+   confirmUninstall: 'Confirm uninstall',
+   confirmDisable: 'Confirm disable',
+@@ -249,23 +250,24 @@ export const en: Record<MarketLocaleKey, string> = {
+   operationRiskBeforeContact: 'Installing a plugin incorrectly, or installing an unverified plugin, may cause crashes or unexpected behavior. You can ',
+   contactUs: 'contact us',
+   operationRiskAfterContact: ' or the plugin developer.',
+-  restartAfterOperation: 'Restart DSH Desktop after this operation for the change to take effect.',
++  restartAfterOperation: 'Restart AI Buddy after this operation for the change to take effect.',
+   disableWarning: 'Disabling does not uninstall the npm package or isolate the plugin’s code.',
+-  disableRecoveryWarning: 'If the plugin prevents DSH Desktop from reaching this page, use the manual recovery steps.',
++  disableRecoveryWarning: 'If the plugin prevents AI Buddy from reaching this page, use the manual recovery steps.',
+   enableWarning: 'After it is enabled, this plugin runs as local code with your user permissions. Enable only plugins you trust.',
+   disabledRestartRequired: 'This plugin is currently disabled and can be enabled again.',
+   installComplete: 'Plugin installed',
+   uninstallComplete: 'Plugin uninstalled',
+   disableComplete: 'Plugin set to disabled',
+   enableComplete: 'Plugin set to enabled',
+-  restartRequiredTitle: 'Restart DSH Desktop',
+-  restartRequiredBody: 'Restart DSH Desktop so the current profile loads its updated plugin state.',
++  restartRequiredTitle: 'Restart AI Buddy',
++  restartRequiredBody: 'Restart AI Buddy so the current profile loads its updated plugin state.',
+   restartLater: 'Restart later',
+   restartNow: 'Restart now',
+   restarting: 'Restarting...',
+   done: 'Done',
+   builtIn: 'Built-in adapter',
+   partner: 'Partner provider',
++  companyStoreDisclaimer: 'Company-reviewed catalog. Listing ≠ security audit.',
+   sourcePartnershipBefore: 'Besides adding a compatible custom source, you can ',
+   sourcePartnershipContact: 'contact us',
+   sourcePartnershipAfter: ' to apply for inclusion as a built-in partner source.',
+diff --git a/dsh-community-market/src/host/routes.ts b/dsh-community-market/src/host/routes.ts
+index 633e566..94bd78f 100644
+--- a/dsh-community-market/src/host/routes.ts
++++ b/dsh-community-market/src/host/routes.ts
+@@ -30,6 +30,10 @@ import {
+   DSH_1024STORE_HOSTNAME,
+ } from '../adapters/dsh-1024store.js'
+ import { DSHFIND_ADAPTER_ID, DSHFIND_HOSTNAME } from '../adapters/dshfind.js'
++import {
++  COMPANY_STORE_ADAPTER_ID,
++  COMPANY_STORE_HOSTNAME,
++} from '../adapters/company-store.js'
+ import { assertStandardSourceTrustRoot } from '../adapters/standard-http.js'
+ import { BUILT_IN_PROVIDERS, DefaultCatalogService, type CatalogFetchScope, type CatalogFullIndex } from '../catalog/service.js'
+ import { SettingsCatalogSourceStore, type MarketCatalogCache, type MarketSettingsDocument } from '../catalog/source-store.js'
+@@ -93,6 +97,7 @@ const MAX_BODY_BYTES = 16 * 1024
+ // The full registry was already about 6.7 MiB in August 2026. Keep bounded
+ // headroom without relaxing the 2 MiB default used by user-added sources.
+ const MAX_DSH_1024STORE_BODY_BYTES = 16 * 1024 * 1024
++const MAX_COMPANY_STORE_BODY_BYTES = 16 * 1024 * 1024
+ const CATALOG_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
+ 
+ const dsh1024StoreHttpClient = createCachedCatalogHttpClient(
+@@ -110,6 +115,13 @@ const dshfindHttpClient = createCachedCatalogHttpClient(
+   }),
+ )
+ 
++const companyStoreHttpClient = createCachedCatalogHttpClient(
++  createRestrictedHttpClient({
++    syntheticProxyHostnames: [COMPANY_STORE_HOSTNAME],
++    maxBodyBytes: MAX_COMPANY_STORE_BODY_BYTES,
++  }),
++)
++
+ function sendJson(res: ServerResponse, status: number, value: unknown): void {
+   const body = JSON.stringify(value)
+   res.statusCode = status
+@@ -792,13 +804,19 @@ export function registerMarketRoutes(
+   const media = createMarketMediaService({
+     fetchImage: createRestrictedImageFetcher({
+       // These are compiled-in adapter hosts, not names supplied by a remote source.
+-      syntheticProxyHostnames: [DSH_1024STORE_HOSTNAME, 'github.com', 'avatars.githubusercontent.com'],
++      syntheticProxyHostnames: [
++        DSH_1024STORE_HOSTNAME,
++        COMPANY_STORE_HOSTNAME,
++        'github.com',
++        'avatars.githubusercontent.com',
++      ],
+     }),
+   })
+   const service = new DefaultCatalogService(store, restrictedHttpClient, {
+     adapterHttpClients: new Map([
+       [DSH_1024STORE_ADAPTER_ID, dsh1024StoreHttpClient],
+       [DSHFIND_ADAPTER_ID, dshfindHttpClient],
++      [COMPANY_STORE_ADAPTER_ID, companyStoreHttpClient],
+     ]),
+     media,
+     observeSnapshot: snapshot => installProvider?.get()?.observeCatalog(snapshot),
+@@ -945,6 +963,9 @@ export function registerMarketRoutes(
+             ...(locale === null || locale === '' ? {} : { locale }),
+             ...(scope === undefined ? {} : { expectedSourceRecordId: scope.sourceRecordId }),
+           })
++          if (index !== undefined) {
++            index = await service.mergeProviderSearch(index, query, signal)
++          }
+         } catch (cause) {
+           if (!signal.aborted && !res.destroyed) sendCatalogFailure(res, cause)
+           return
+diff --git a/dsh-community-market/src/index.ts b/dsh-community-market/src/index.ts
+index 56b3f0d..a67028c 100644
+--- a/dsh-community-market/src/index.ts
++++ b/dsh-community-market/src/index.ts
+@@ -95,5 +95,11 @@ export { marketRoutes } from './host/routes.js'
+ export { BUILT_IN_PROVIDERS, DefaultCatalogService } from './catalog/service.js'
+ export { dsh1024StoreAdapter } from './adapters/dsh-1024store.js'
+ export { dshfindAdapter } from './adapters/dshfind.js'
++export { companyStoreAdapter } from './adapters/company-store.js'
++export {
++  COMPANY_STORE_KEY,
++  COMPANY_STORE_ADAPTER_ID,
++  COMPANY_STORE_PROVIDER_ID,
++} from './adapters/company-store.js'
+ export type * from './api-types.js'
+ export * from './contracts/index.js'
+diff --git a/dsh-community-market/tests/company-store-adapter.spec.ts b/dsh-community-market/tests/company-store-adapter.spec.ts
+new file mode 100644
+index 0000000..9350827
+--- /dev/null
++++ b/dsh-community-market/tests/company-store-adapter.spec.ts
+@@ -0,0 +1,143 @@
++/**
++ * Drop into dsh-community-market/tests/company-store-adapter.spec.ts
++ *
++ * Mirrors official dsh-1024store adapter coverage for the company built-in.
++ * Uses fixtures/plugins-api.installable.json from this patch directory
++ * (copy to tests/fixtures/ when applying).
++ */
++import { readFileSync } from 'node:fs'
++import { describe, expect, it, vi } from 'vitest'
++import {
++  COMPANY_STORE_ADAPTER_ID,
++  COMPANY_STORE_ENDPOINT,
++  COMPANY_STORE_HOSTNAME,
++  COMPANY_STORE_KEY,
++  COMPANY_STORE_PROVIDER_ID,
++  companyStoreAdapter,
++} from '../src/adapters/company-store.js'
++import { DSH_1024STORE_KEY } from '../src/adapters/dsh-1024store.js'
++import type { CatalogHttpClient, LocalSourceRecord } from '../src/contracts/types.js'
++
++const fixture = JSON.parse(
++  readFileSync(new URL('./fixtures/plugins-api.installable.json', import.meta.url), 'utf8'),
++) as {
++  packages: unknown[]
++  meta: Record<string, unknown>
++  name: string
++}
++
++const source = (overrides: Partial<LocalSourceRecord> = {}): LocalSourceRecord => ({
++  sourceRecordId: '018f1f77-a5c4-7b73-a9ae-0242ac120099',
++  registrationKind: 'built-in',
++  adapterId: COMPANY_STORE_ADAPTER_ID,
++  providerId: COMPANY_STORE_PROVIDER_ID,
++  builtInProviderKey: COMPANY_STORE_KEY,
++  enabled: true,
++  order: 0,
++  ...overrides,
++})
++
++function httpClient(value: unknown, finalUrl = COMPANY_STORE_ENDPOINT): CatalogHttpClient {
++  return {
++    async getJson(url, _signal, policy = {}) {
++      const requested = new URL(url)
++      const expected = new URL(COMPANY_STORE_ENDPOINT)
++      expect(requested.origin).toBe(expected.origin)
++      expect(requested.pathname).toBe(expected.pathname)
++      if (policy.allowedOrigin !== undefined) {
++        expect(policy.allowedOrigin).toBe(expected.origin)
++      }
++      return { value, finalUrl }
++    },
++  }
++}
++
++const media = {
++  register: vi.fn(() => {
++    throw new Error('media unavailable in unit fixture')
++  }),
++  unregisterSource() {},
++}
++
++describe('company-store adapter', () => {
++  it('does not collide with the official built-in key', () => {
++    expect(COMPANY_STORE_KEY).toBe('company-store')
++    expect(COMPANY_STORE_KEY).not.toBe(DSH_1024STORE_KEY)
++    expect(COMPANY_STORE_HOSTNAME).toBe('plugins.company.example')
++    expect(COMPANY_STORE_ADAPTER_ID).toBe('market.company-store-v1')
++  })
++
++  it('pins origin and pages installable npm targets from the Store wire shape', async () => {
++    const snapshot = await companyStoreAdapter.fetch({ limit: 50 }, {
++      signal: new AbortController().signal,
++      source: source(),
++      http: httpClient({
++        name: fixture.name,
++        meta: { ...fixture.meta, total: fixture.packages.length },
++        packages: fixture.packages,
++      }),
++      media,
++    })
++
++    expect(snapshot.source.providerId).toBe(COMPANY_STORE_PROVIDER_ID)
++    expect(snapshot.source.adapterId).toBe(COMPANY_STORE_ADAPTER_ID)
++    expect(snapshot.items.length).toBeGreaterThan(0)
++    const installable = snapshot.items.find(item => item.package?.registry === 'npm')
++    expect(installable?.package?.name).toMatch(/^[a-z0-9@]/)
++    expect(installable?.latestVersion).toMatch(/^\d+\.\d+\.\d+$/)
++    expect(installable?.repository?.url).toMatch(/^https:\/\/github\.com\//)
++  })
++
++  it('filters by q and rejects origin changes', async () => {
++    const needle = (fixture.packages[0] as { name: string }).name
++    const hit = await companyStoreAdapter.fetch({ q: needle, limit: 10 }, {
++      signal: new AbortController().signal,
++      source: source(),
++      http: httpClient({
++        meta: { total: fixture.packages.length },
++        packages: fixture.packages,
++      }),
++      media,
++    })
++    expect(hit.items.every(item =>
++      [item.id, item.displayName, item.summary].join('\n').toLowerCase().includes(needle.toLowerCase()),
++    )).toBe(true)
++
++    await expect(companyStoreAdapter.fetch({}, {
++      signal: new AbortController().signal,
++      source: source(),
++      http: httpClient({ packages: [], meta: { total: 0 } }, 'https://evil.example/api/v1/plugins'),
++      media,
++    })).rejects.toThrow(/origin/i)
++  })
++
++  it('keeps browse-only github packages without npm package identity', async () => {
++    const browseOnly = {
++      id: 'anweat/dsh-restart',
++      name: 'dsh-restart',
++      owner: 'anweat',
++      url: 'https://github.com/anweat/dsh-restart',
++      category: 'fun',
++      description: { en: 'Restart DSH', zh: '重启' },
++      added: '2026-08-14',
++      installMethods: [{
++        kind: 'github',
++        spec: 'github:anweat/dsh-restart',
++        command: 'dsh plugin --profile web add github:anweat/dsh-restart',
++        verification: 'unverified',
++        code: 'entry_missing_no_prepare',
++        requiresBuildAllowance: false,
++        revision: null,
++      }],
++    }
++    const snapshot = await companyStoreAdapter.fetch({}, {
++      signal: new AbortController().signal,
++      source: source(),
++      http: httpClient({ packages: [browseOnly], meta: { total: 1 } }),
++      media,
++    })
++    expect(snapshot.items).toHaveLength(1)
++    expect(snapshot.items[0]?.package).toBeUndefined()
++    expect(snapshot.items[0]?.repository?.url).toBe('https://github.com/anweat/dsh-restart')
++  })
++})
+diff --git a/dsh-community-market/tests/fixtures/plugins-api.installable.json b/dsh-community-market/tests/fixtures/plugins-api.installable.json
+new file mode 100644
+index 0000000..0df6ba1
+--- /dev/null
++++ b/dsh-community-market/tests/fixtures/plugins-api.installable.json
+@@ -0,0 +1,135 @@
++{
++  "name": "dsh-1024store-catalog",
++  "meta": {
++    "total": 3,
++    "catalogTotal": 3,
++    "updated": "2026-08-21",
++    "generatedAt": "2026-08-21T15:35:15.000Z",
++    "revision": "sha256:6a1593a73f261aa56ecb9fbb805e3e9fc93ce836490de733e740181844d346c9",
++    "source": "fixture",
++    "metricCoverage": 3
++  },
++  "packages": [
++    {
++      "id": "amruthpillai/reactive-resume/packages/dsh-plugin",
++      "name": "dsh-plugin",
++      "owner": "amruthpillai",
++      "url": "https://github.com/amruthpillai/reactive-resume",
++      "category": "ui",
++      "description": {
++        "en": "Builds privacy-focused, customizable resumes directly in the interface, offering secure editing and export options.",
++        "zh": "提供隐私保护、可定制的简历构建工具，支持安全编辑与导出功能。"
++      },
++      "added": "2026-08-21",
++      "stars": 41368,
++      "installCount": 8,
++      "pushedAt": "2026-08-20T08:56:18Z",
++      "install": "dsh plugin --profile web add dsh-plugin-reactive-resume",
++      "installMethods": [
++        {
++          "kind": "npm",
++          "spec": "dsh-plugin-reactive-resume",
++          "command": "dsh plugin --profile web add dsh-plugin-reactive-resume",
++          "verification": "verified",
++          "code": "published_package",
++          "requiresBuildAllowance": false,
++          "buildPackage": null,
++          "revision": "0.1.0",
++          "checkedAt": "2026-08-19T10:20:51.000Z"
++        },
++        {
++          "kind": "npm",
++          "spec": "dsh-plugin-reactive-resume",
++          "command": "dsh plugin --profile web add dsh-plugin-reactive-resume",
++          "verification": "verified",
++          "code": "repository_backlink",
++          "requiresBuildAllowance": false,
++          "buildPackage": null,
++          "revision": "0.1.0",
++          "checkedAt": "2026-08-19T10:20:51.000Z"
++        }
++      ]
++    },
++    {
++      "id": "volcengine/OpenViking/examples/dsh-memory-plugin",
++      "name": "dsh-memory-plugin",
++      "owner": "volcengine",
++      "url": "https://github.com/volcengine/OpenViking",
++      "category": "memory",
++      "description": {
++        "en": "Unifies long-term memory, knowledge retrieval, and skills into a self-evolving context database for agents.",
++        "zh": "整合长期记忆、知识检索与技能，为智能体提供自演进的上下文数据库。"
++      },
++      "added": "2026-08-21",
++      "stars": 31434,
++      "installCount": 57,
++      "pushedAt": "2026-08-21T13:10:47Z",
++      "install": "dsh plugin --profile web add @openviking/dsh-memory-plugin",
++      "installMethods": [
++        {
++          "kind": "npm",
++          "spec": "@openviking/dsh-memory-plugin",
++          "command": "dsh plugin --profile web add @openviking/dsh-memory-plugin",
++          "verification": "verified",
++          "code": "published_package",
++          "requiresBuildAllowance": false,
++          "buildPackage": null,
++          "revision": "0.2.1",
++          "checkedAt": "2026-08-20T13:40:31.000Z"
++        },
++        {
++          "kind": "npm",
++          "spec": "@openviking/dsh-memory-plugin",
++          "command": "dsh plugin --profile web add @openviking/dsh-memory-plugin",
++          "verification": "verified",
++          "code": "repository_backlink",
++          "requiresBuildAllowance": false,
++          "buildPackage": null,
++          "revision": "0.2.1",
++          "checkedAt": "2026-08-20T13:40:31.000Z"
++        }
++      ]
++    },
++    {
++      "id": "vectorize-io/hindsight/hindsight-integrations/coding-agents",
++      "name": "coding-agents",
++      "owner": "vectorize-io",
++      "url": "https://github.com/vectorize-io/hindsight",
++      "category": "memory",
++      "description": {
++        "en": "Hindsight, agent memory that learns: long-term project memory with auto recall and retain, knowledge pages, deep reflection, and per-repo memory banks.",
++        "zh": "Hindsight 可学习的 Agent 记忆：自动召回与沉淀的长期项目记忆、知识页、深度反思与按仓库隔离的记忆库。"
++      },
++      "added": "2026-08-16",
++      "stars": 20766,
++      "installCount": 24,
++      "pushedAt": "2026-08-21T03:37:05Z",
++      "install": "dsh plugin --profile web add @vectorize-io/hindsight-coding-agents",
++      "installMethods": [
++        {
++          "kind": "npm",
++          "spec": "@vectorize-io/hindsight-coding-agents",
++          "command": "dsh plugin --profile web add @vectorize-io/hindsight-coding-agents",
++          "verification": "verified",
++          "code": "published_package",
++          "requiresBuildAllowance": false,
++          "buildPackage": null,
++          "revision": "0.4.1",
++          "checkedAt": "2026-08-20T09:25:31.000Z"
++        },
++        {
++          "kind": "npm",
++          "spec": "@vectorize-io/hindsight-coding-agents",
++          "command": "dsh plugin --profile web add @vectorize-io/hindsight-coding-agents",
++          "verification": "verified",
++          "code": "repository_backlink",
++          "requiresBuildAllowance": false,
++          "buildPackage": null,
++          "revision": "0.4.1",
++          "checkedAt": "2026-08-20T09:25:31.000Z"
++        }
++      ]
++    }
++  ],
++  "_note": "Captured from public deepseek1024.com GET /api/v1/plugins for adapter contract tests. Top-level name is optional (registry name dsh-1024store-catalog lives on /api/v1/registry). Company Store preserves packages/meta/installMethods. AI Buddy installability requires a single verified npm method with code repository_backlink; Store list responses alias published_package ↔ repository_backlink."
++}
+diff --git a/dsh-community-market/tests/host-routes.spec.ts b/dsh-community-market/tests/host-routes.spec.ts
+index 1fecc66..dab22ea 100644
+--- a/dsh-community-market/tests/host-routes.spec.ts
++++ b/dsh-community-market/tests/host-routes.spec.ts
+@@ -16,6 +16,11 @@ import {
+   DSHFIND_KEY,
+   DSHFIND_PROVIDER_ID,
+ } from '../src/adapters/dshfind.js'
++import {
++  COMPANY_STORE_ADAPTER_ID,
++  COMPANY_STORE_KEY,
++  COMPANY_STORE_PROVIDER_ID,
++} from '../src/adapters/company-store.js'
+ import type { MarketSettingsDocument } from '../src/catalog/source-store.js'
+ import type { CatalogSourceManifest, LocalSourceRecord } from '../src/contracts/index.js'
+ import { marketRoutes, registerMarketRoutes } from '../src/host/routes.js'
+@@ -184,6 +189,11 @@ describe('community market Host routes', () => {
+             endpoint: DSHFIND_ENDPOINT,
+             partnership: true,
+           },
++          {
++            key: COMPANY_STORE_KEY,
++            providerId: COMPANY_STORE_PROVIDER_ID,
++            partnership: true,
++          },
+         ],
+       })
+     } finally {
+@@ -324,6 +334,7 @@ describe('community market Host routes', () => {
+   it.each([
+     [DSH_1024STORE_KEY, DSH_1024STORE_ADAPTER_ID, DSH_1024STORE_PROVIDER_ID, 'DSH 1024Store'],
+     [DSHFIND_KEY, DSHFIND_ADAPTER_ID, DSHFIND_PROVIDER_ID, 'dshfind'],
++    [COMPANY_STORE_KEY, COMPANY_STORE_ADAPTER_ID, COMPANY_STORE_PROVIDER_ID, 'Company Store'],
+   ] as const)('adds reviewed built-in provider %s as a disabled source', async (key, adapterId, providerId, name) => {
+     const server = await startMarketServer([])
+     try {
+-- 
+2.43.0
+

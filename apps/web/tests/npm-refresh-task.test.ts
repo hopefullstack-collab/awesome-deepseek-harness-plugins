@@ -145,7 +145,11 @@ function checkedAt(database: DatabaseSync, path: string): string | null {
 }
 
 function envFor(database: DatabaseSync): Env {
-  return { CATALOG_DB: sqliteD1(database) } as unknown as Env
+  return {
+    CATALOG_DB: sqliteD1(database),
+    // These fixtures seed topic-discovered plugins; re-enable topic eligibility.
+    TOPIC_DISCOVERY_ENABLED: '1',
+  } as unknown as Env
 }
 
 describe('npm refresh task', () => {
