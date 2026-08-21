@@ -364,21 +364,36 @@ export function validateSubmissionChanges(changes) {
   const reviewables = []
   const deletions = []
   let additions = 0
+  let catalogTouches = 0
   for (const change of changes) {
     // git reports rename/copy statuses with a similarity score (R100, C75).
     const status = change.status[0]
     const paths = change.oldPath === undefined ? [change.file] : [change.oldPath, change.file]
+    const touchesCatalog = paths.some(
+      candidate => candidate === catalogPrefix.slice(0, -1) || candidate.startsWith(catalogPrefix),
+    )
+    if (touchesCatalog) catalogTouches += 1
     if (!['A', 'M', 'D', 'R', 'C'].includes(status)) {
       problems.push(`unsupported change: ${describeChange(change)}`)
       continue
     }
     if (!paths.every(candidate => catalogFilePattern.test(candidate))) {
+      // Paths under catalog/plugins/ that are not a single-level *.json still
+      // count as catalog intent (nested dirs, wrong extension) so mixed /
+      // malformed catalog PRs keep failing closed.
       problems.push(`unexpected change: ${describeChange(change)}`)
       continue
     }
     if (status === 'D') deletions.push(change.file)
     else reviewables.push(change.file)
     if (status === 'A') additions += 1
+  }
+  // Maintenance / company-fork PRs that never touch the plugin catalog are not
+  // submissions. Skip (exit green) so static-review stays required for real
+  // catalog PRs without forcing an emergency bypass for Store work. Any catalog
+  // touch — including mixed catalog+code — still runs the strict gate below.
+  if (catalogTouches === 0) {
+    return { verdict: 'skipped', reviewables: [], deletions: [], changes }
   }
   if (problems.length > 0) {
     throw new Error([
@@ -432,6 +447,14 @@ async function main() {
       ? changedFiles(base, head)
       : await pullRequestChanges(repository, pullNumber, client)
     const submission = validateSubmissionChanges(changes)
+    if (submission.verdict === 'skipped') {
+      publishVerdict('skipped')
+      console.log(
+        'SKIP not a catalog plugin submission '
+        + `(no ${catalogPrefix}*.json changes); static-review does not apply.`,
+      )
+      return
+    }
     // Read the category allow-list from the trusted checkout this script was
     // loaded from, never from the submitted tree: it decides which categories a
     // submission may claim, so it must not be attacker-controlled.

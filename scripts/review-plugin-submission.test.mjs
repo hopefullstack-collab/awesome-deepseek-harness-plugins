@@ -278,8 +278,19 @@ test('rejects unrelated files', () => {
   ]), /unexpected change: M SECURITY\.md/)
 })
 
-test('rejects pull requests touching only non-catalog files', () => {
+test('skips pull requests that never touch the plugin catalog', () => {
+  const result = validateSubmissionChanges([
+    { status: 'M', file: 'apps/web/src/App.tsx' },
+    { status: 'A', file: 'docs/company-fork-deploy.md' },
+  ])
+  assert.equal(result.verdict, 'skipped')
+  assert.deepEqual(result.reviewables, [])
+  assert.deepEqual(result.deletions, [])
+})
+
+test('still rejects mixed catalog-plus-code pull requests', () => {
   assert.throws(() => validateSubmissionChanges([
+    { status: 'A', file: 'catalog/plugins/owner--plugin.json' },
     { status: 'M', file: 'apps/web/src/App.tsx' },
   ]), /unexpected change: M apps\/web\/src\/App\.tsx/)
 })
