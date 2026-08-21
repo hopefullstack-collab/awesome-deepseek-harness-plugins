@@ -25,7 +25,17 @@ Product constants in that commit match [patch/APPLY.md](./patch/APPLY.md) (`plug
 - Fork-local PR (clean vs diverged fork `master` only): https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/19
 - Temporary sync PR on fork (upstream `master` → fork; **dirty** / conflicts): https://github.com/hopefullstack-collab/deepseek-harness-desktop/pull/20
 
-### New-fork attempt (2026-08-21) — failed for shared history
+### Writable-remote probe (2026-08-21, refreshed)
+
+Identity: GitHub MCP `get_me` → `hopefullstack-collab`. Upstream `master` still `9d18856`.
+
+| Candidate | Proper fork? | Write result |
+| --- | --- | --- |
+| `hopefullstack-collab/deepseek-harness-desktop` | **Yes** | MCP `create_branch` + `push_files` **OK** on existing fork history. Local clean tip `4d46120` (parent `9d18856`, 1 commit) **cannot** `git push` → **403** `denied to cursor[bot]`. `merge-upstream` / `git/refs` @ `9d18856` → **403** integration. |
+| `hopefullstack-collab/deepseek-harness-desktop-stage2` | No (docs-only) | MCP branch create OK; not on upstream PR network. |
+| `jo32/DeepDeck` | No | MCP `create_branch` → **404** (no write). |
+
+### Earlier new-fork attempt — failed for shared history
 
 | Step | Result |
 | --- | --- |
@@ -33,14 +43,14 @@ Product constants in that commit match [patch/APPLY.md](./patch/APPLY.md) (`plug
 | `POST /repos/anywhere-labs/deepseek-harness-desktop/forks` with `name=deepseek-harness-desktop-stage2` | **403** `Resource not accessible by integration` |
 | MCP `fork_repository` (no org) | Returns existing diverged fork (cannot have two forks per user) |
 | MCP `create_repository` `deepseek-harness-desktop-stage2` | Created empty repo (not a fork; no upstream network) |
-| `git push --mirror` / push tip `c0d5f16` (parent `9d18856`) | **403** `Permission ... denied to cursor[bot]` |
-| `POST .../git/refs` to `cursor/exact-9d18856` @ `9d18856` | **403** `Resource not accessible by integration` |
-| `POST .../merge-upstream` on existing fork | **403** same |
+| `git push` clean tip (parent `9d18856`) | **403** `Permission ... denied to cursor[bot]` |
+| `POST .../git/refs` @ `9d18856` | **403** `Resource not accessible by integration` |
+| `POST .../merge-upstream` | **403** same |
 | MCP `create_branch` | Works, but only copies an **existing branch tip** (cannot take upstream SHA) |
 
 Existing fork vs upstream: `master` tips `2b8f88d` vs `9d18856`; compare status **diverged** (merge-base `7ff6c98`).
 
-**Do not open more dirty upstream PRs.** Maintainer apply path below remains valid.
+**Do not open more dirty upstream PRs.** Maintainer apply path below remains valid. Patch-only delivery repo skipped (redundant with this Store PR).
 
 ### Unblock permissions (exact)
 
@@ -54,7 +64,7 @@ Existing fork vs upstream: `master` tips `2b8f88d` vs `9d18856`; compare status 
 
 ### Cloudflare
 
-`wrangler whoami` → **not authenticated**. No deploy / no `COMPANY_STORE_*` pin this run.
+`CLOUDFLARE_API_TOKEN` unset; `wrangler whoami` → **not authenticated**. No durable deploy / no `COMPANY_STORE_*` pin. Keepalive device verify still running with code **`UYXhiK4t`**. One-shot ≥15m CF recheck timer subscribed.
 
 Upstream reference clone:
 
