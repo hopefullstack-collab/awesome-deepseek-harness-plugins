@@ -33,6 +33,8 @@ see desktop `docs/company-store-ci-note.md`).
 Full done-vs-blocked audit: [`goal-completion-checklist.md`](./goal-completion-checklist.md).
 Human unblock packet (secret names + ordered commands):
 [`company-fork-deploy.md` § Human unblock packet](./company-fork-deploy.md#human-unblock-packet-m1--stage-2-pin).
+**Preferred laptop path:**
+[`company-fork-deploy.md` § Local-first](./company-fork-deploy.md#local-first-recommended-unblock).
 
 
 ## Product rules

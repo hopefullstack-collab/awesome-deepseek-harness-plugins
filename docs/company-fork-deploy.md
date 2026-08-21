@@ -4,6 +4,131 @@ This repository is company-forked from DSH 1024Store. The Market catalog is
 **company-reviewed `catalog/plugins/*.json` only**. GitHub topic whole-network
 scan is **off** by default (`TOPIC_DISCOVERY_ENABLED=0`).
 
+## Local-first (recommended unblock)
+
+**Yes — run and deploy from your laptop.** This cloud agent has no company
+Cloudflare session (`wrangler whoami` unauthenticated). Interactive
+`wrangler login` on a machine where you already use Cloudflare is the
+fastest path to a durable Worker. GitHub Actions secrets remain an
+alternative; do not wait on cloud device-login polls.
+
+Two layers (do not conflate them):
+
+| Layer | What it proves | Completes M1? |
+| --- | --- | --- |
+| `wrangler dev --local` / `npm run smoke:company-plugins-api` on `http://127.0.0.1:8787` | Wire contract for anonymous Market GET | **No** — localhost is **dev only** |
+| `wrangler login` → create D1/KV → migrate → `wrangler deploy` → anonymous **HTTPS** on `*.workers.dev` or real apex | Durable public origin employees/Market can use | **Yes** (M1 gate) |
+
+**Explicit:** localhost is for development and smoke. Market for employees
+needs a **public HTTPS** origin. Do not redefine M1 as “local only.”
+
+### A. Local API smoke (no Cloudflare account)
+
+From the Store repo root (after `npm ci`):
+
+```bash
+npm run smoke:company-plugins-api
+# equivalent: builds Worker, boots wrangler dev --local on :8787,
+# syncs curated samples, asserts GET /api/v1/plugins has packages + meta
+```
+
+Or leave a long-lived local Worker running:
+
+```bash
+# terminal A — after npm ci + npm run build in apps/web (or let smoke boot it)
+cd apps/web
+npx wrangler d1 migrations apply CATALOG_DB --local
+npx wrangler dev --local --port 8787
+# terminal B
+curl -sS http://127.0.0.1:8787/api/v1/health
+curl -sS 'http://127.0.0.1:8787/api/v1/plugins?limit=1' | jq 'keys, .meta'
+```
+
+### B. From your laptop — durable deploy (recommended)
+
+Use a shell where you can complete the Cloudflare browser login (company
+account). Exact sequence for a first **workers.dev** land:
+
+```bash
+# 0) Clone this fork branch and install
+git clone https://github.com/hopefullstack-collab/awesome-deepseek-harness-plugins.git
+cd awesome-deepseek-harness-plugins
+git checkout cursor/company-store-fork-cb2c   # or main after merge
+npm ci
+
+# 1) Interactive login (opens browser — do this on YOUR machine)
+npx wrangler login
+npx wrangler whoami
+# Expect the company Cloudflare account (note Account ID)
+
+# 2) Create D1 + KV; paste ids into apps/web/wrangler.jsonc
+cd apps/web
+npx wrangler d1 create company-store-catalog
+# Copy the printed database_id → replace the all-zero database_id in wrangler.jsonc
+npx wrangler kv namespace create CATALOG_CACHE
+# Copy the printed id → replace the all-zero KV id in wrangler.jsonc
+
+# 3) First land on *.workers.dev: remove placeholder custom-domain routes
+#    (plugins.company.example is not a real zone — leaving it fails the deploy).
+#    Delete or comment out the entire "routes": [ ... ], block in wrangler.jsonc
+#    so only the Worker name remains. Keep TOPIC_DISCOVERY_ENABLED "0".
+
+# 4) Secrets (minimum for catalog sync + install hashing; OAuth can wait)
+openssl rand -hex 32   # → INSTALL_CLIENT_HASH_SECRET
+openssl rand -hex 32   # → CATALOG_SYNC_TOKEN
+printf '%s' '<INSTALL_CLIENT_HASH_SECRET>' | npx wrangler secret put INSTALL_CLIENT_HASH_SECRET
+printf '%s' '<CATALOG_SYNC_TOKEN>'         | npx wrangler secret put CATALOG_SYNC_TOKEN
+# Optional now: GITHUB_TOKEN, GITHUB_OAUTH_CLIENT_ID, GITHUB_OAUTH_CLIENT_SECRET
+
+# 5) Migrate + deploy (deliberate local act — not implied by git push)
+npx wrangler d1 export CATALOG_DB --remote \
+  --output=catalog-backup-$(date +%Y%m%d-%H%M).sql || true   # ok if DB empty on first run
+npm run db:migrate:remote --workspace @dsh-1024store/web
+npm run deploy
+cd ../..
+
+# 6) Note the workers.dev URL from deploy output, then verify anonymous HTTPS
+export APEX='https://company-store.<your-subdomain>.workers.dev'   # replace
+curl -sS "$APEX/api/v1/health"
+curl -sS "$APEX/api/v1/plugins?limit=1" | jq 'keys, .meta'
+export CATALOG_SYNC_TOKEN='…same value as secret…'
+node scripts/company-fork-e2e-install-check.mjs --base-url "$APEX" --sync
+curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta'
+```
+
+Only after step 6 succeeds: pin desktop `COMPANY_STORE_ENDPOINT` /
+`COMPANY_STORE_HOSTNAME` to that durable HTTPS origin (see desktop
+`company-store-endpoint-swap.md`). Do **not** pin trycloudflare or localhost
+into production constants.
+
+Later (real DNS): restore three `routes[]` patterns, set real apex in
+`site-config.ts`, re-deploy, re-pin desktop.
+
+### C. Dev-only Market → localhost (optional local e2e)
+
+Desktop Stage 2 can point the **company-store** built-in at a local Worker
+**without** changing the committed production default:
+
+```bash
+# Store: terminal A
+npm run smoke:company-plugins-api   # or wrangler dev --local on :8787
+
+# Desktop host process (AI Buddy / dsh-community-market host):
+export DSH_COMPANY_STORE_LOCAL_ENDPOINT=1
+# or: export DSH_COMPANY_STORE_LOCAL_ENDPOINT=http://127.0.0.1:8787/api/v1/plugins
+# Then start the desktop/Market host. Unset the env for normal runs.
+```
+
+Rules:
+
+- Env unset → placeholder `https://plugins.company.example` (production default).
+- Only `http://127.0.0.1` is accepted; never commit a localhost pin.
+- Built-in stays **not** default-selected / not fallback (unchanged).
+- This does **not** complete M1; employees still need public HTTPS (§B).
+
+Details: desktop `dsh-community-market/docs/company-store-endpoint-swap.md`
+(§ Local development override).
+
 ## Placeholders to replace before production
 
 | Item | Current placeholder | Notes |
@@ -130,10 +255,15 @@ Requirement audit (done vs blocked): [`goal-completion-checklist.md`](./goal-com
 
 ## Human unblock packet (M1 → Stage 2 pin)
 
-Do this in **one sitting** once a company Cloudflare account exists. Do **not**
-redefine M1 as local or trycloudflare.
+**Preferred:** follow [§ Local-first](#local-first-recommended-unblock) on your
+laptop (`wrangler login` → D1/KV → deploy → HTTPS verify). That unblocks M1
+without waiting on this cloud agent’s device-login polls or Actions secrets.
+
+Do **not** redefine M1 as local-only or trycloudflare. Localhost proves the
+wire; public HTTPS is the production gate.
 
 ### A. Exact GitHub Actions secret **names** (repo Settings → Secrets and variables → Actions)
+
 
 | Secret name | Value to paste | How to mint |
 | --- | --- | --- |
@@ -186,19 +316,15 @@ curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta, (.packa
 #    COMPANY_DEPLOY_WORKERS_DEV=false, re-run workflow, re-pin desktop constants.
 ```
 
-### C. Local alternative (interactive laptop with `wrangler login`)
+### C. Interactive laptop path
 
-```bash
-npx wrangler login
-npx wrangler whoami   # must show company account
-# Create D1/KV, paste ids into apps/web/wrangler.jsonc, strip or replace routes
-npx wrangler d1 export CATALOG_DB --remote --output=catalog-backup-$(date +%Y%m%d-%H%M).sql
-npm run db:migrate:remote --workspace @dsh-1024store/web
-npm run deploy
-# Then same verify + sync + desktop pin as B.2–B.5
-```
+Full copy-paste sequence (login → create D1/KV → strip placeholder routes →
+secrets → migrate → deploy → curl HTTPS → desktop pin): see
+[§ Local-first B](#b-from-your-laptop--durable-deploy-recommended). Prefer that
+over waiting for cloud-agent `wrangler login` device codes.
 
 ## Interim public HTTPS (cloudflared quick tunnel) — not M1-complete
+
 
 While CF account API credentials are missing, the Worker was proven over
 **public HTTPS** via:
@@ -302,19 +428,14 @@ edge HTTPS can be reached without a company account, but **do not** pin desktop
 `CLOUDFLARE_API_TOKEN` + account + D1/KV via `.github/workflows/company-fork-deploy.yml`
 (or interactive `wrangler login` + real domain checklist above).
 
-## Local listening smoke (M1 acceptance without CF)
+## Local listening smoke (dev wire check — not M1-complete)
 
-Vite `npm run dev` needs a Cloudflare remote-proxy token in this environment.
-The smoke uses **`wrangler dev --local`** against a production build instead
-(no account / no API token):
+See [§ Local-first A](#a-local-api-smoke-no-cloudflare-account). Vite
+`npm run dev` needs a Cloudflare remote-proxy token in this environment; the
+smoke uses **`wrangler dev --local`** against a production build instead (no
+account / no API token).
 
-```bash
-npm ci
-node scripts/smoke-company-plugins-api.mjs
-# or: npm run smoke:company-plugins-api
-```
-
-What it does:
+What `npm run smoke:company-plugins-api` does:
 
 1. Writes gitignored `apps/web/.dev.vars` if missing (smoke tokens only).
 2. Applies local D1 migrations (`CATALOG_DB --local`).
@@ -326,6 +447,9 @@ What it does:
 
 CI gate: `.github/workflows/company-fork-deploy-readiness.yml` (PR + push) runs
 API contract + company-fork invariants + this smoke.
+
+This is **necessary but not sufficient** for M1 — employees still need public
+HTTPS from [§ Local-first B](#b-from-your-laptop--durable-deploy-recommended).
 
 ## Ops runbook (M4)
 
