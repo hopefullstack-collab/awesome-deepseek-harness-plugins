@@ -44,3 +44,20 @@ Evidence: [`local-m3-install-path-2026-08-21T19-31-55Z.json`](./local-m3-install
 | Private npm invented | no |
 
 Stage 3 stays **blocked** for durable HTTPS + public npm probe; this is strongest in-repo e2e without CF.
+
+## Live-origin smoke (`smoke:company-store-live`)
+
+Captured: 2026-08-21T23:10:44.581Z
+Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
+PASS checks: 6/6 (health, packages/meta/installMethods, `q` hit/miss, search pagination, pin refuse)
+durable=false pinAllowed=false
+Details: [`LIVE.md`](./LIVE.md) · [`live-smoke-2026-08-21T23-10-44-581Z.json`](./live-smoke-2026-08-21T23-10-44-581Z.json)
+
+## Stage 2 adapter live wire (`verify:company-store-adapter-live`)
+
+Captured: 2026-08-21T23:10:46.466Z
+Fed interim Market JSON through desktop `createDsh1024StyleStoreAdapter` → **PASS**
+items=3 browseOnly=3 github=3 npm=0 (no invented npm identity)
+Artifact: [`adapter-live-2026-08-21T23-10-46-466Z.json`](./adapter-live-2026-08-21T23-10-46-466Z.json)
+Does **not** pin `COMPANY_STORE_*`.
+

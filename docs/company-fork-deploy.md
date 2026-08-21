@@ -381,7 +381,9 @@ Evidence (committed under `docs/examples/smoke-evidence/`):
 
 | File | Contents |
 | --- | --- |
-| `interim-https-summary.json` | Origin, package count, wire keys, durable=false |
+| `LIVE.md` / `live-smoke-*.json` | `npm run smoke:company-store-live` — health, packages/meta/installMethods, `q`, search pagination, pin refuse |
+| `adapter-live-*.json` | `npm run verify:company-store-adapter-live` — desktop Stage 2 parser on live wire |
+| `interim-https-summary.json` | Earlier manual recheck summary (`durable: false`) |
 | `interim-https-health.json` | `GET /api/v1/health` → `{"status":"ok"}` |
 | `interim-https-plugins-slim.json` | Slim `packages` / `meta` extract |
 | `interim-https-headers.txt` | HTTP/2 200, `server: cloudflare`, HSTS |
@@ -390,15 +392,17 @@ Captured origin example (ephemeral — dies with the agent tunnel process):
 
 `https://excel-combo-increasingly-spots.trycloudflare.com`
 
-Anonymous `GET /api/v1/plugins?limit=5` returned `packages` + `meta` +
-`rankings` + `categories` (3 curated packages) over TLS.
-
-**Recheck 2026-08-21T23:04Z:** same origin still returns HTTP 200 Market JSON
-with **no** Managed Challenge (agent used DoH @ `1.1.1.1` + `curl --resolve`
-because UDP DNS to public resolvers timed out). Pin helper still refuses this
-host:
+Strongest recheck (2026-08-21T23:10Z):
 
 ```bash
+COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+  npm run smoke:company-store-live
+# → PASS 6/6 (durable=false pinAllowed=false)
+
+COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+  npm run verify:company-store-adapter-live
+# → PASS adapter browse-only parse (no invented npm)
+
 COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
   npm run pin:company-store-origin -- --dry-run
 # → Refuse trycloudflare (ephemeral)
