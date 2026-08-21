@@ -1,7 +1,7 @@
 # Company Store live-origin smoke
 
-Captured: 2026-08-21T23:10:44.581Z
-Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
+Captured: 2026-08-21T23:22:50.413Z
+Origin: `https://mas-speeds-constitutional-cleared.trycloudflare.com`
 Script: `npm run smoke:company-store-live`
 durable: **false** · pinAllowed: **false** · m1Complete: **false**
 
@@ -23,7 +23,7 @@ durable: **false** · pinAllowed: **false** · m1Complete: **false**
 - search page1 limit2: 2 / total 3
 - search page2 limit2: 1
 - body sha256[0:16]: `7f6a85dc143d7b65`
-- Artifact: [`live-smoke-2026-08-21T23-10-44-581Z.json`](./live-smoke-2026-08-21T23-10-44-581Z.json)
+- Artifact: [`live-smoke-2026-08-21T23-22-50-413Z.json`](./live-smoke-2026-08-21T23-22-50-413Z.json)
 
 Do **not** treat trycloudflare as Stage 2 production pin evidence.
 

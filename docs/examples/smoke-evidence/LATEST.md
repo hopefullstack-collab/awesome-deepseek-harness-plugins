@@ -18,9 +18,10 @@ Acceptance:
 
 ## Interim public HTTPS recheck (not M1 / not pin-eligible)
 
-Captured: 2026-08-21T23:04:03Z
-Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
-Via: `cloudflared` → `127.0.0.1:8787` (`ha_connections=1`)
+Captured: 2026-08-21T23:22:50Z
+Origin: `https://mas-speeds-constitutional-cleared.trycloudflare.com`
+(Prior `excel-combo-increasingly-spots…` died after UDP DNS outage; tunnel restarted.)
+Via: `cloudflared` → `127.0.0.1:8787` (`ha_connections=1`; agent uses local DoH DNS proxy)
 Anonymous `GET /api/v1/health` → `{"status":"ok"}` (200, no Managed Challenge)
 Anonymous `GET /api/v1/plugins?limit=5` → Market JSON keys
 `categories|meta|packages|rankings`, 3 packages (200, no Managed Challenge)
@@ -47,17 +48,25 @@ Stage 3 stays **blocked** for durable HTTPS + public npm probe; this is stronges
 
 ## Live-origin smoke (`smoke:company-store-live`)
 
-Captured: 2026-08-21T23:10:44.581Z
-Origin: `https://excel-combo-increasingly-spots.trycloudflare.com`
+Captured: 2026-08-21T23:22:50.413Z
+Origin: `https://mas-speeds-constitutional-cleared.trycloudflare.com`
 PASS checks: 6/6 (health, packages/meta/installMethods, `q` hit/miss, search pagination, pin refuse)
 durable=false pinAllowed=false
-Details: [`LIVE.md`](./LIVE.md) · [`live-smoke-2026-08-21T23-10-44-581Z.json`](./live-smoke-2026-08-21T23-10-44-581Z.json)
+Details: [`LIVE.md`](./LIVE.md) · [`live-smoke-2026-08-21T23-22-50-413Z.json`](./live-smoke-2026-08-21T23-22-50-413Z.json)
 
 ## Stage 2 adapter live wire (`verify:company-store-adapter-live`)
 
-Captured: 2026-08-21T23:10:46.466Z
+Captured: 2026-08-21T23:22:52.701Z
 Fed interim Market JSON through desktop `createDsh1024StyleStoreAdapter` → **PASS**
 items=3 browseOnly=3 github=3 npm=0 (no invented npm identity)
-Artifact: [`adapter-live-2026-08-21T23-10-46-466Z.json`](./adapter-live-2026-08-21T23-10-46-466Z.json)
+Artifact: [`adapter-live-2026-08-21T23-22-52-701Z.json`](./adapter-live-2026-08-21T23-22-52-701Z.json)
 Does **not** pin `COMPANY_STORE_*`.
+
+## Desktop adapter/host tests vs live HTTPS
+
+Captured: 2026-08-21T23:23:04Z
+- `DSH_COMPANY_STORE_LOCAL_ENDPOINT` **rejects** trycloudflare HTTPS (loopback-only)
+- `yarn vitest run tests/company-store-adapter.spec.ts tests/company-store-host-routes.spec.ts` → **10/10 PASS** (placeholder constants; no live override)
+- Live wire parse evidence = adapter-live script above
+Artifact: [`desktop-live-origin-tests-2026-08-21T23-23-04Z.json`](./desktop-live-origin-tests-2026-08-21T23-23-04Z.json)
 

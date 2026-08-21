@@ -1,14 +1,15 @@
 {
-  "capturedAt": "2026-08-21T23:04:03Z",
+  "capturedAt": "2026-08-21T23:22:50Z",
   "kind": "interim-cloudflared-quick-tunnel-recheck",
   "durable": false,
   "m1Complete": false,
   "pinAllowed": false,
   "pinRefuseReason": "scripts/pin-company-store-origin.sh refuses *.trycloudflare.com",
-  "note": "Anonymous GET over public HTTPS via cloudflared quick tunnel \u2192 wrangler dev --local. NOT durable. Do NOT pin desktop COMPANY_STORE_*. For laptop Market UI smoke use DSH_COMPANY_STORE_LOCAL_ENDPOINT=1 (or http://127.0.0.1:8787/...) while tunnel/local remain up; interim URL only for manual one-off testing.",
-  "publicHttpsOrigin": "https://excel-combo-increasingly-spots.trycloudflare.com",
+  "note": "Anonymous GET over public HTTPS via cloudflared quick tunnel \u2192 wrangler dev --local. NOT durable. Do NOT pin desktop COMPANY_STORE_*. Prior excel-combo-… hostname died (UDP DNS outage); tunnel restarted. For laptop Market UI smoke use DSH_COMPANY_STORE_LOCAL_ENDPOINT=1 (loopback only).",
+  "publicHttpsOrigin": "https://mas-speeds-constitutional-cleared.trycloudflare.com",
+  "previousPublicHttpsOrigin": "https://excel-combo-increasingly-spots.trycloudflare.com",
   "localOrigin": "http://127.0.0.1:8787",
-  "resolveMethod": "DoH via https://1.1.1.1 (UDP DNS broken in agent) + curl --resolve to 104.16.230.132",
+  "resolveMethod": "Local DoH DNS proxy on 127.0.0.1:53 (UDP DNS to 10.0.0.2 timed out)",
   "health": {
     "status": "ok"
   },

@@ -388,22 +388,23 @@ Evidence (committed under `docs/examples/smoke-evidence/`):
 | `interim-https-plugins-slim.json` | Slim `packages` / `meta` extract |
 | `interim-https-headers.txt` | HTTP/2 200, `server: cloudflare`, HSTS |
 
-Captured origin example (ephemeral — dies with the agent tunnel process):
+Captured origin example (ephemeral — dies with the agent tunnel process; hostname
+rotates when the quick tunnel restarts):
 
-`https://excel-combo-increasingly-spots.trycloudflare.com`
+`https://mas-speeds-constitutional-cleared.trycloudflare.com`
 
-Strongest recheck (2026-08-21T23:10Z):
+Strongest recheck (2026-08-21T23:22Z):
 
 ```bash
-COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+COMPANY_STORE_ORIGIN='https://mas-speeds-constitutional-cleared.trycloudflare.com' \
   npm run smoke:company-store-live
 # → PASS 6/6 (durable=false pinAllowed=false)
 
-COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+COMPANY_STORE_ORIGIN='https://mas-speeds-constitutional-cleared.trycloudflare.com' \
   npm run verify:company-store-adapter-live
 # → PASS adapter browse-only parse (no invented npm)
 
-COMPANY_STORE_ORIGIN='https://excel-combo-increasingly-spots.trycloudflare.com' \
+COMPANY_STORE_ORIGIN='https://mas-speeds-constitutional-cleared.trycloudflare.com' \
   npm run pin:company-store-origin -- --dry-run
 # → Refuse trycloudflare (ephemeral)
 ```

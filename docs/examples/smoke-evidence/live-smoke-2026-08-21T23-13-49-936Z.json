@@ -1,0 +1,114 @@
+{
+  "capturedAt": "2026-08-21T23:13:49.936Z",
+  "kind": "company-store-live-smoke",
+  "origin": "https://excel-combo-increasingly-spots.trycloudflare.com",
+  "durable": false,
+  "pinAllowed": false,
+  "m1Complete": false,
+  "goalComplete": false,
+  "note": "Interim/local origin only. Pin script refuses trycloudflare/localhost. Goal remains OPEN.",
+  "anonymousGet": true,
+  "managedChallenge": false,
+  "checks": [
+    {
+      "name": "health",
+      "pass": true,
+      "detail": "HTTP 200 challenge=false"
+    },
+    {
+      "name": "plugins-packages-meta-installMethods",
+      "pass": true,
+      "detail": "packages=3 meta.total=3 installMethods=3"
+    },
+    {
+      "name": "plugins-q-hit",
+      "pass": true,
+      "detail": "n=1 meta.total=1"
+    },
+    {
+      "name": "plugins-q-miss",
+      "pass": true,
+      "detail": "n=0"
+    },
+    {
+      "name": "search-pagination",
+      "pass": true,
+      "detail": "p1=2 p2=1 total=3"
+    },
+    {
+      "name": "pin-script-refuse",
+      "pass": true,
+      "detail": "correctly refused ephemeral/local origin"
+    }
+  ],
+  "health": {
+    "status": "ok"
+  },
+  "plugins": {
+    "packageCount": 3,
+    "keys": [
+      "categories",
+      "meta",
+      "packages",
+      "rankings"
+    ],
+    "meta": {
+      "total": 3,
+      "catalogTotal": 3,
+      "updated": "2026-08-21",
+      "generatedAt": "2026-08-21T19:27:34.645Z",
+      "revision": "sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f",
+      "source": "stale",
+      "metricCoverage": 0
+    },
+    "sampleNames": [
+      "dsh-crosstalk",
+      "dsh-find-plugin",
+      "dsh-restart"
+    ],
+    "sampleHasInstallMethods": [
+      true,
+      true,
+      true
+    ]
+  },
+  "pluginsBodyDigest": "7f6a85dc143d7b65",
+  "qHit": {
+    "packageCount": 1,
+    "meta": {
+      "total": 1,
+      "catalogTotal": 3,
+      "updated": "2026-08-21",
+      "generatedAt": "2026-08-21T19:27:34.645Z",
+      "revision": "sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f",
+      "source": "stale",
+      "metricCoverage": 0
+    }
+  },
+  "searchPage1": {
+    "resultCount": 2,
+    "page": 1,
+    "limit": 2,
+    "total": 3,
+    "totalPages": 2,
+    "names": [
+      "dsh-crosstalk",
+      "dsh-find-plugin"
+    ]
+  },
+  "searchPage2": {
+    "resultCount": 1,
+    "page": 2,
+    "names": [
+      "dsh-restart"
+    ]
+  },
+  "httpStatus": {
+    "health": 200,
+    "plugins": 200,
+    "qHit": 200,
+    "qMiss": 200,
+    "searchPage1": 200,
+    "searchPage2": 200
+  }
+}
