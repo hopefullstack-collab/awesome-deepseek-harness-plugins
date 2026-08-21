@@ -1,0 +1,283 @@
+# Secrets-gated Cloudflare deploy for the company Store fork.
+#
+# Soft-skips (exit 0) on push when Cloudflare secrets are missing so the
+# workflow stays green until the company account is wired. workflow_dispatch
+# hard-fails when secrets are missing so operators get a loud signal.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   — Workers + D1 + KV (+ DNS if binding custom domains)
+#   CLOUDFLARE_ACCOUNT_ID  — company Cloudflare account id
+#
+# Optional Worker runtime secrets (uploaded when present):
+#   WORKER_GITHUB_TOKEN or CATALOG_GITHUB_TOKEN  → Worker GITHUB_TOKEN
+#   INSTALL_CLIENT_HASH_SECRET
+#   CATALOG_SYNC_TOKEN
+#   GITHUB_OAUTH_CLIENT_ID
+#   GITHUB_OAUTH_CLIENT_SECRET
+#
+# Optional repository variables:
+#   COMPANY_D1_DATABASE_ID      — paste after creating D1 (or use create_resources)
+#   COMPANY_KV_NAMESPACE_ID     — paste after creating KV
+#   COMPANY_DEPLOY_WORKERS_DEV  — "true" (default on push) strips custom_domain
+#                                 routes so deploy lands on *.workers.dev
+#
+# After secrets exist: Actions → "Company fork Cloudflare deploy" → Run workflow
+# (or push to main). Then point desktop company-store constants at the durable
+# HTTPS origin — see docs/company-fork-deploy.md.
+name: Company fork Cloudflare deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_resources:
+        description: 'Create D1 + KV when wrangler ids are still all-zero placeholders'
+        type: boolean
+        default: true
+      workers_dev_only:
+        description: 'Strip placeholder custom_domain routes (deploy to workers.dev)'
+        type: boolean
+        default: true
+      apply_migrations:
+        description: 'Apply remote D1 migrations before deploy'
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/company-fork-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: company-fork-cf-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Require Cloudflare secrets (or soft-skip)
+        id: gate
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not configured — deploy skipped."
+            echo "Fill those repository secrets (and paste D1/KV ids or enable create_resources), then re-run this workflow."
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::workflow_dispatch requires Cloudflare secrets; refusing silent skip."
+              exit 1
+            fi
+            exit 0
+          fi
+          echo "missing=false" >> "$GITHUB_OUTPUT"
+          echo "Cloudflare secrets present — continuing deploy."
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.missing == 'false'
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.missing == 'false'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        if: steps.gate.outputs.missing == 'false'
+        run: npm ci
+
+      - name: Resolve deploy flags
+        if: steps.gate.outputs.missing == 'false'
+        id: flags
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "create_resources=${{ inputs.create_resources }}" >> "$GITHUB_OUTPUT"
+            echo "workers_dev_only=${{ inputs.workers_dev_only }}" >> "$GITHUB_OUTPUT"
+            echo "apply_migrations=${{ inputs.apply_migrations }}" >> "$GITHUB_OUTPUT"
+          else
+            DEV_ONLY="${{ vars.COMPANY_DEPLOY_WORKERS_DEV }}"
+            if [ -z "$DEV_ONLY" ]; then DEV_ONLY=true; fi
+            echo "create_resources=false" >> "$GITHUB_OUTPUT"
+            echo "workers_dev_only=${DEV_ONLY}" >> "$GITHUB_OUTPUT"
+            echo "apply_migrations=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Inject D1 / KV ids from variables (when set)
+        if: steps.gate.outputs.missing == 'false'
+        env:
+          COMPANY_D1_DATABASE_ID: ${{ vars.COMPANY_D1_DATABASE_ID }}
+          COMPANY_KV_NAMESPACE_ID: ${{ vars.COMPANY_KV_NAMESPACE_ID }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'apps/web/wrangler.jsonc';
+          let text = fs.readFileSync(path, 'utf8');
+          const d1 = process.env.COMPANY_D1_DATABASE_ID || '';
+          const kv = process.env.COMPANY_KV_NAMESPACE_ID || '';
+          if (d1) {
+            text = text.replace(
+              /("database_id"\s*:\s*)"[0-9a-fA-F-]{36}"/,
+              `$1"${d1}"`,
+            );
+            console.log('Injected COMPANY_D1_DATABASE_ID into wrangler.jsonc');
+          }
+          if (kv) {
+            text = text.replace(
+              /("id"\s*:\s*)"0{32}"/,
+              `$1"${kv}"`,
+            );
+            console.log('Injected COMPANY_KV_NAMESPACE_ID into wrangler.jsonc');
+          }
+          fs.writeFileSync(path, text);
+          NODE
+
+      - name: Create D1 + KV if placeholders remain
+        if: steps.gate.outputs.missing == 'false' && steps.flags.outputs.create_resources == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+          const path = 'wrangler.jsonc';
+          let text = fs.readFileSync(path, 'utf8');
+          const zeroD1 = /"database_id"\s*:\s*"00000000-0000-0000-0000-000000000000"/.test(text);
+          const zeroKv = /"id"\s*:\s*"00000000000000000000000000000000"/.test(text);
+          function run(cmd) {
+            console.log('+ ' + cmd);
+            return execSync(cmd, { encoding: 'utf8' });
+          }
+          if (zeroD1) {
+            const out = run('npx wrangler d1 create company-store-catalog');
+            console.log(out);
+            const m = out.match(/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
+            if (!m) throw new Error('Could not parse D1 database_id from wrangler output');
+            text = text.replace(
+              /("database_id"\s*:\s*)"00000000-0000-0000-0000-000000000000"/,
+              `$1"${m[1]}"`,
+            );
+            console.log('Created D1 company-store-catalog →', m[1]);
+            console.log('::notice::Commit or set COMPANY_D1_DATABASE_ID=', m[1]);
+          } else {
+            console.log('D1 database_id already set — skip create');
+          }
+          if (zeroKv) {
+            const out = run('npx wrangler kv namespace create CATALOG_CACHE');
+            console.log(out);
+            const m = out.match(/([0-9a-fA-F]{32})/);
+            if (!m) throw new Error('Could not parse KV id from wrangler output');
+            text = text.replace(
+              /("id"\s*:\s*)"00000000000000000000000000000000"/,
+              `$1"${m[1]}"`,
+            );
+            console.log('Created KV CATALOG_CACHE →', m[1]);
+            console.log('::notice::Commit or set COMPANY_KV_NAMESPACE_ID=', m[1]);
+          } else {
+            console.log('KV id already set — skip create');
+          }
+          fs.writeFileSync(path, text);
+          NODE
+
+      - name: Strip placeholder custom domains (workers.dev deploy)
+        if: steps.gate.outputs.missing == 'false' && steps.flags.outputs.workers_dev_only == 'true'
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'apps/web/wrangler.jsonc';
+          let text = fs.readFileSync(path, 'utf8');
+          // Drop the routes array so wrangler does not bind plugins.company.example.
+          const stripped = text.replace(/\n\s*"routes"\s*:\s*\[[\s\S]*?\],\n/, '\n');
+          if (stripped === text) {
+            console.warn('Could not locate routes[] block; leaving wrangler.jsonc unchanged');
+          } else {
+            fs.writeFileSync(path, stripped);
+            console.log('Removed routes[] for workers.dev-only deploy');
+          }
+          NODE
+
+      - name: Refuse deploy on still-zero D1/KV ids
+        if: steps.gate.outputs.missing == 'false'
+        run: |
+          set -euo pipefail
+          if grep -q '00000000-0000-0000-0000-000000000000' apps/web/wrangler.jsonc; then
+            echo '::error::D1 database_id is still the all-zero placeholder. Set var COMPANY_D1_DATABASE_ID or re-run with create_resources=true.'
+            exit 1
+          fi
+          if grep -q '00000000000000000000000000000000' apps/web/wrangler.jsonc; then
+            echo '::error::KV CATALOG_CACHE id is still the all-zero placeholder. Set var COMPANY_KV_NAMESPACE_ID or re-run with create_resources=true.'
+            exit 1
+          fi
+
+      - name: Build
+        if: steps.gate.outputs.missing == 'false'
+        run: npm run build
+
+      - name: Remote D1 migrations
+        if: steps.gate.outputs.missing == 'false' && steps.flags.outputs.apply_migrations == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run db:migrate:remote
+
+      - name: Deploy Worker
+        if: steps.gate.outputs.missing == 'false'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy
+
+      - name: Upload Worker secrets (when provided)
+        if: steps.gate.outputs.missing == 'false'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          W_GITHUB_TOKEN: ${{ secrets.WORKER_GITHUB_TOKEN || secrets.CATALOG_GITHUB_TOKEN }}
+          INSTALL_CLIENT_HASH_SECRET: ${{ secrets.INSTALL_CLIENT_HASH_SECRET }}
+          CATALOG_SYNC_TOKEN: ${{ secrets.CATALOG_SYNC_TOKEN }}
+          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.GITHUB_OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.GITHUB_OAUTH_CLIENT_SECRET }}
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          put_secret() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "skip secret $name (not set in repository secrets)"
+              return 0
+            fi
+            printf '%s' "$value" | npx wrangler secret put "$name"
+            echo "uploaded secret $name"
+          }
+          put_secret GITHUB_TOKEN "${W_GITHUB_TOKEN}"
+          put_secret INSTALL_CLIENT_HASH_SECRET "${INSTALL_CLIENT_HASH_SECRET}"
+          put_secret CATALOG_SYNC_TOKEN "${CATALOG_SYNC_TOKEN}"
+          put_secret GITHUB_OAUTH_CLIENT_ID "${GITHUB_OAUTH_CLIENT_ID}"
+          put_secret GITHUB_OAUTH_CLIENT_SECRET "${GITHUB_OAUTH_CLIENT_SECRET}"
+
+      - name: Print next steps
+        if: steps.gate.outputs.missing == 'false'
+        run: |
+          cat <<'EOF'
+          Deploy attempted. Next:
+          1. Confirm https://company-store.<account-subdomain>.workers.dev/api/v1/health (or your apex).
+          2. POST /api/v1/catalog/sync with CATALOG_SYNC_TOKEN + curated samples.
+          3. Anonymous GET /api/v1/plugins — expect packages + meta.
+          4. Update desktop company-store COMPANY_STORE_ENDPOINT / HOSTNAME to that durable HTTPS origin.
+          5. For real company DNS: commit real routes in wrangler.jsonc, set COMPANY_DEPLOY_WORKERS_DEV=false, re-run.
+          Interim trycloudflare tunnels are NOT durable — do not pin them in desktop constants.
+          EOF

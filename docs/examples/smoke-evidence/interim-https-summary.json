@@ -1,0 +1,43 @@
+{
+  "capturedAt": "2026-08-21T17:50:20Z",
+  "kind": "interim-cloudflared-quick-tunnel",
+  "durable": false,
+  "m1Complete": false,
+  "note": "Anonymous GET over public HTTPS via cloudflared quick tunnel \u2192 wrangler dev --local. NOT a durable company apex. Do NOT pin desktop COMPANY_STORE_ENDPOINT to this trycloudflare URL (ephemeral; dies with the agent). Swap steps: set COMPANY_STORE_ENDPOINT/HOSTNAME when real apex is deployed.",
+  "publicHttpsOrigin": "https://excel-combo-increasingly-spots.trycloudflare.com",
+  "localOrigin": "http://127.0.0.1:8787",
+  "health": {
+    "status": "ok"
+  },
+  "plugins": {
+    "keys": [
+      "categories",
+      "meta",
+      "packages",
+      "rankings"
+    ],
+    "packageCount": 3,
+    "meta": {
+      "total": 3,
+      "catalogTotal": 3,
+      "updated": "2026-08-21",
+      "generatedAt": "2026-08-21T17:30:45.458Z",
+      "revision": "sha256:d82931c9ef2e163c0a11b10a0beff81bee8f5a3e507685b44edb192f881a656f",
+      "source": "kv",
+      "metricCoverage": 0
+    },
+    "sampleNames": [
+      "dsh-crosstalk",
+      "dsh-find-plugin",
+      "dsh-restart"
+    ],
+    "sampleHasInstallMethods": [
+      true,
+      true,
+      true
+    ]
+  },
+  "anonymousGet": true,
+  "tlsVia": "cloudflare (HTTP/2, server: cloudflare, strict-transport-security present)",
+  "dnsNote": "Agent resolver could not resolve *.trycloudflare.com; evidence captured with curl --resolve after dig @1.1.1.1 / DoH."
+}

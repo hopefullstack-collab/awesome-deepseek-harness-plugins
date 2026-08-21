@@ -106,17 +106,19 @@ Do **not** retarget the official `dsh-1024store` built-in at the company domain.
 
 ## Missing credentials audit (this environment)
 
-Checked on the cloud agent host before attempting deploy:
+Re-checked on the cloud agent host this turn (env, `/tmp/cursor`, `.dev.vars`,
+Cursor `environment-info` MCP, wrangler config):
 
 | Check | Result |
 | --- | --- |
 | `npx wrangler whoami` | **Not authenticated** — no OAuth session |
 | `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` env | **Absent** |
-| `apps/web/.dev.vars` | **Absent** (gitignored; not provisioned) |
+| Cursor environment secrets / linked env | **None** (`environment: null`) |
+| `apps/web/.dev.vars` | Present locally for smoke only (gitignored; not CF auth) |
 | Wrangler config D1 / KV ids | Still all-zero placeholders |
 | Custom domain zone | Placeholder `*.company.example` only |
 
-**Exact secrets / resources required before a real public HTTPS deploy:**
+**Exact secrets / resources required before a durable public HTTPS deploy:**
 
 1. Cloudflare account with Workers enabled (company account, not personal ad-hoc).
 2. `CLOUDFLARE_API_TOKEN` (or interactive `wrangler login`) with Workers / D1 / KV / DNS edit.
@@ -125,12 +127,94 @@ Checked on the cloud agent host before attempting deploy:
 5. Created D1 database id + KV namespace id pasted into `apps/web/wrangler.jsonc`.
 6. Worker secrets (never commit): `GITHUB_TOKEN`, `INSTALL_CLIENT_HASH_SECRET`,
    `CATALOG_SYNC_TOKEN`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
-7. Matching GitHub Actions secret `CATALOG_SYNC_TOKEN` (and deploy key if catalog-sync
-   README push is kept).
+7. Matching GitHub Actions secrets for `.github/workflows/company-fork-deploy.yml`
+   (at minimum `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`; see below).
 
-Until those exist, **do not** treat `workers.dev` preview as the permanent Market
-origin — AI Buddy `company-store` must pin the final public apex. Local smoke
-(below) proves the wire contract while the goal stays open for public deploy.
+Until those exist, **do not** treat `workers.dev` preview or a trycloudflare
+quick tunnel as the permanent Market origin — AI Buddy `company-store` must pin
+the final public apex. Local + interim tunnel smoke prove the wire contract
+while the goal stays open for durable company deploy.
+
+## Interim public HTTPS (cloudflared quick tunnel) — not M1-complete
+
+While CF account API credentials are missing, the Worker was proven over
+**public HTTPS** via:
+
+1. `wrangler dev --local` on `http://127.0.0.1:8787` (curated catalog synced)
+2. `cloudflared tunnel --url http://127.0.0.1:8787` (account-less quick tunnel)
+
+Evidence (committed under `docs/examples/smoke-evidence/`):
+
+| File | Contents |
+| --- | --- |
+| `interim-https-summary.json` | Origin, package count, wire keys, durable=false |
+| `interim-https-health.json` | `GET /api/v1/health` → `{"status":"ok"}` |
+| `interim-https-plugins-slim.json` | Slim `packages` / `meta` extract |
+| `interim-https-headers.txt` | HTTP/2 200, `server: cloudflare`, HSTS |
+
+Captured origin example (ephemeral — dies with the agent tunnel process):
+
+`https://excel-combo-increasingly-spots.trycloudflare.com`
+
+Anonymous `GET /api/v1/plugins?limit=5` returned `packages` + `meta` +
+`rankings` + `categories` (3 curated packages) over TLS.
+
+**This is interim M1 verification only.** It does **not** complete the durable
+company-domain M1 gate. Do **not** pin desktop `COMPANY_STORE_ENDPOINT` /
+`COMPANY_STORE_HOSTNAME` to a `*.trycloudflare.com` URL (unstable hostname,
+process-bound). Keep placeholders until a durable apex or `*.workers.dev`
+Worker exists, then follow the swap steps in the desktop
+`company-store-builtin` docs.
+
+Reproduce locally:
+
+```bash
+# terminal A
+npm run smoke:company-plugins-api   # or leave wrangler dev --local running
+# terminal B
+cloudflared tunnel --url http://127.0.0.1:8787
+curl -sS "$TUNNEL_URL/api/v1/health"
+curl -sS "$TUNNEL_URL/api/v1/plugins?limit=5" | jq 'keys, (.packages|length), .meta'
+```
+
+## Secrets-gated GitHub Actions deploy (one merge away)
+
+Workflow: [`.github/workflows/company-fork-deploy.yml`](../.github/workflows/company-fork-deploy.yml)
+
+| Trigger | Behavior without CF secrets | Behavior with secrets |
+| --- | --- | --- |
+| `push` to `main` (web paths) | Soft-skip exit 0 + notice | Build → migrate → deploy |
+| `workflow_dispatch` | **Hard fail** (loud operator signal) | Same; optional create D1/KV |
+
+**Repository secrets to add (company Cloudflare account):**
+
+| Secret | Purpose |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Non-interactive wrangler auth |
+| `CLOUDFLARE_ACCOUNT_ID` | Account scope |
+| `WORKER_GITHUB_TOKEN` (or `CATALOG_GITHUB_TOKEN`) | Worker `GITHUB_TOKEN` secret |
+| `INSTALL_CLIENT_HASH_SECRET` | Worker secret |
+| `CATALOG_SYNC_TOKEN` | Worker secret (+ catalog-sync workflow) |
+| `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` | Worker secrets |
+
+**Optional repository variables:**
+
+| Variable | Purpose |
+| --- | --- |
+| `COMPANY_D1_DATABASE_ID` | Inject real D1 id before deploy |
+| `COMPANY_KV_NAMESPACE_ID` | Inject real KV id before deploy |
+| `COMPANY_DEPLOY_WORKERS_DEV` | Default `true` on push — strips placeholder custom domains so the first deploy lands on `*.workers.dev` |
+
+**Operator sequence once secrets exist:**
+
+1. Actions → **Company fork Cloudflare deploy** → Run workflow
+   (`create_resources=true`, `workers_dev_only=true` for first land).
+2. Confirm `https://company-store.<subdomain>.workers.dev/api/v1/health`.
+3. `POST /api/v1/catalog/sync` with curated samples + `CATALOG_SYNC_TOKEN`.
+4. Anonymous `GET /api/v1/plugins` — assert `packages` + `meta`.
+5. Update desktop `COMPANY_STORE_ENDPOINT` / `HOSTNAME` to that durable HTTPS origin.
+6. Later: commit real DNS routes in `wrangler.jsonc`, set
+   `COMPANY_DEPLOY_WORKERS_DEV=false`, re-run for the company apex.
 
 ## Local listening smoke (M1 acceptance without CF)
 
