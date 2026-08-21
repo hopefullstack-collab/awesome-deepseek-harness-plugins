@@ -106,34 +106,97 @@ Do **not** retarget the official `dsh-1024store` built-in at the company domain.
 
 ## Missing credentials audit (this environment)
 
-Re-checked on the cloud agent host this turn (env, `/tmp/cursor`, `.dev.vars`,
-Cursor `environment-info` MCP, wrangler config):
+Re-checked from scratch on the cloud agent host this turn (shell env, `/tmp/cursor`,
+`apps/web/.dev.vars`, Cursor `environment-info` MCP, `npx wrangler whoami`,
+GitHub Actions secrets API):
 
 | Check | Result |
 | --- | --- |
 | `npx wrangler whoami` | **Not authenticated** — no OAuth session |
 | `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` env | **Absent** |
 | Cursor environment secrets / linked env | **None** (`environment: null`) |
+| GitHub Actions secrets list (API) | **403** for this integration — cannot confirm presence; owner must verify names in repo Settings → Secrets |
 | `apps/web/.dev.vars` | Present locally for smoke only (gitignored; not CF auth) |
+| Wrangler temporary preview account | May appear under `~/.config/.wrangler/` — **not** company auth; expires; Market GET unusable |
 | Wrangler config D1 / KV ids | Still all-zero placeholders |
 | Custom domain zone | Placeholder `*.company.example` only |
 
-**Exact secrets / resources required before a durable public HTTPS deploy:**
+Until company Cloudflare credentials exist, **do not** treat `workers.dev`
+temporary preview or a trycloudflare quick tunnel as the permanent Market
+origin — AI Buddy `company-store` must pin the final durable apex. Local +
+interim tunnel smoke prove the wire contract while the goal stays open.
 
-1. Cloudflare account with Workers enabled (company account, not personal ad-hoc).
-2. `CLOUDFLARE_API_TOKEN` (or interactive `wrangler login`) with Workers / D1 / KV / DNS edit.
-3. `CLOUDFLARE_ACCOUNT_ID` if using API-token non-interactive deploy.
-4. Real public zone + three hostnames (apex / www / api) — HTTPS only.
-5. Created D1 database id + KV namespace id pasted into `apps/web/wrangler.jsonc`.
-6. Worker secrets (never commit): `GITHUB_TOKEN`, `INSTALL_CLIENT_HASH_SECRET`,
-   `CATALOG_SYNC_TOKEN`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`.
-7. Matching GitHub Actions secrets for `.github/workflows/company-fork-deploy.yml`
-   (at minimum `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`; see below).
+Requirement audit (done vs blocked): [`goal-completion-checklist.md`](./goal-completion-checklist.md).
 
-Until those exist, **do not** treat `workers.dev` preview or a trycloudflare
-quick tunnel as the permanent Market origin — AI Buddy `company-store` must pin
-the final public apex. Local + interim tunnel smoke prove the wire contract
-while the goal stays open for durable company deploy.
+## Human unblock packet (M1 → Stage 2 pin)
+
+Do this in **one sitting** once a company Cloudflare account exists. Do **not**
+redefine M1 as local or trycloudflare.
+
+### A. Exact GitHub Actions secret **names** (repo Settings → Secrets and variables → Actions)
+
+| Secret name | Value to paste | How to mint |
+| --- | --- | --- |
+| `CLOUDFLARE_API_TOKEN` | API token string | Cloudflare dashboard → My Profile → API Tokens → Create Token with **Workers Scripts Edit**, **Workers KV Storage Edit**, **Account Analytics Read**, **D1 Edit** (and **DNS Edit** if binding custom domains) |
+| `CLOUDFLARE_ACCOUNT_ID` | 32-hex account id | Workers overview right sidebar, or `wrangler whoami` after login |
+| `WORKER_GITHUB_TOKEN` (alias `CATALOG_GITHUB_TOKEN`) | GitHub PAT or fine-grained token | Needed for Worker `GITHUB_TOKEN` secret (catalog enrichment); repo `public_repo` / metadata read is enough for public plugins |
+| `INSTALL_CLIENT_HASH_SECRET` | ≥32 random bytes (hex/base64) | `openssl rand -hex 32` |
+| `CATALOG_SYNC_TOKEN` | ≥32 random bytes | `openssl rand -hex 32` — must match callers of `POST /api/v1/catalog/sync` |
+| `GITHUB_OAUTH_CLIENT_ID` | OAuth App client id | Optional for first workers.dev land; required before site sign-in |
+| `GITHUB_OAUTH_CLIENT_SECRET` | OAuth App secret | Same |
+
+Optional **Actions variables** (Settings → Variables):
+
+| Variable | When |
+| --- | --- |
+| `COMPANY_D1_DATABASE_ID` | After first create, commit or set so push deploys do not recreate |
+| `COMPANY_KV_NAMESPACE_ID` | Same for KV |
+| `COMPANY_DEPLOY_WORKERS_DEV` | Leave unset/`true` for first land; set `false` only after real DNS routes are committed |
+
+### B. Ordered commands (first durable land on `*.workers.dev`)
+
+```bash
+# 0) Confirm secrets exist in the Store fork repo (UI), then:
+#    Actions → "Company fork Cloudflare deploy" → Run workflow
+#    create_resources=true, workers_dev_only=true, apply_migrations=true
+
+# 1) After the workflow succeeds, note the workers.dev URL from the job log, e.g.
+#    https://company-store.<subdomain>.workers.dev
+export APEX='https://company-store.<subdomain>.workers.dev'   # replace
+
+# 2) Health + empty/anonymous plugins shape
+curl -sS "$APEX/api/v1/health"
+curl -sS "$APEX/api/v1/plugins?limit=1" | jq 'keys, .meta'
+
+# 3) Sync curated samples (token = repository secret CATALOG_SYNC_TOKEN)
+export CATALOG_SYNC_TOKEN='…paste same value…'
+node scripts/company-fork-e2e-install-check.mjs --base-url "$APEX" --sync
+
+# 4) Assert anonymous Market GET (packages + meta); record URL for desktop pin
+curl -sS "$APEX/api/v1/plugins?limit=5" | jq '(.packages|length), .meta, (.packages[0].installMethods|type)'
+
+# 5) Desktop Stage 2 pin (separate repo) — only now:
+#    Edit dsh-community-market/src/adapters/company-store.ts
+#      COMPANY_STORE_ENDPOINT = "$APEX/api/v1/plugins"
+#      COMPANY_STORE_HOSTNAME = host of $APEX
+#    Follow dsh-community-market/docs/company-store-endpoint-swap.md
+#    Re-run assemble + wiring + yarn vitest run; push desktop PR.
+
+# 6) Later (real company DNS): fill wrangler routes + D1/KV ids, set
+#    COMPANY_DEPLOY_WORKERS_DEV=false, re-run workflow, re-pin desktop constants.
+```
+
+### C. Local alternative (interactive laptop with `wrangler login`)
+
+```bash
+npx wrangler login
+npx wrangler whoami   # must show company account
+# Create D1/KV, paste ids into apps/web/wrangler.jsonc, strip or replace routes
+npx wrangler d1 export CATALOG_DB --remote --output=catalog-backup-$(date +%Y%m%d-%H%M).sql
+npm run db:migrate:remote --workspace @dsh-1024store/web
+npm run deploy
+# Then same verify + sync + desktop pin as B.2–B.5
+```
 
 ## Interim public HTTPS (cloudflared quick tunnel) — not M1-complete
 
@@ -295,16 +358,36 @@ at least the last successful pre-migration backup until the next green deploy
 
 ### Monitoring checklist (post-deploy)
 
+**Availability / contract**
+
 - [ ] `GET https://<apex>/api/v1/health` → ok
-- [ ] `GET https://<apex>/api/v1/plugins?limit=1` → `packages` + `meta`; registry
-      name still `dsh-1024store-catalog` on `/api/v1/registry`
+- [ ] `GET https://<apex>/api/v1/plugins?limit=1` → `packages` + `meta`
+- [ ] `GET https://<apex>/api/v1/registry` → `name: dsh-1024store-catalog`
 - [ ] `GET https://api.<…>/v1/health` → ok; unknown paths → `404 {"code":"NOT_FOUND"}`
 - [ ] www → 301 apex
+- [ ] TLS cert valid; no captive portal / Managed Challenge on anonymous Market GET
+
+**Catalog / policy**
+
 - [ ] Catalog sync workflow green after a curated merge (`CATALOG_SYNC_TOKEN` match)
 - [ ] `TOPIC_DISCOVERY_ENABLED` still `"0"` unless intentionally reopened
-- [ ] AI Buddy `company-store` endpoint constants match apex (separate desktop PR)
-- [ ] Quota / 5xx: Workers analytics + D1 size; alert on sustained 5xx on plugins GET
+- [ ] Published snapshot package count matches curated `from_pr=1` expectation
+- [ ] Stage 3 install check: `node scripts/company-fork-e2e-install-check.mjs --base-url https://<apex>`
+
+**Client pin**
+
+- [ ] AI Buddy `company-store` `COMPANY_STORE_ENDPOINT` / `HOSTNAME` match apex
+- [ ] Desktop disclaimer still shows `公司目录，收录≠安全审核` when selected
+
+**Capacity / errors**
+
+- [ ] Workers analytics: alert on sustained 5xx on `/api/v1/plugins` and `/api/v1/health`
+- [ ] Public API search quota headers present on metered routes; no unexpected 429 storm
+- [ ] D1 size / KV write failures visible in CF dashboard
 - [ ] Weekly: export D1 backup even without migration
+
+See also Stage 3 notes: [`company-fork-stage3-e2e-install.md`](./company-fork-stage3-e2e-install.md)
+and the live audit: [`goal-completion-checklist.md`](./goal-completion-checklist.md).
 
 ### Deploy readiness definition of done
 

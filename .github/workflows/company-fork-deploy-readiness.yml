@@ -32,6 +32,8 @@ jobs:
           npm run test --workspace @dsh-1024store/web -- tests/company-fork-invariants.test.ts
         env:
           GITHUB_TOKEN: ci-typecheck-placeholder
+      - name: Deploy workflow dry-run (no Cloudflare)
+        run: npm run check:company-deploy-workflow
       - name: Listening origin smoke (GET /api/v1/plugins)
         run: npm run smoke:company-plugins-api
         env:

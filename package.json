@@ -38,7 +38,9 @@
     "deploy": "npm run deploy:worker --workspace @dsh-1024store/web",
     "test:capture-homepage": "node --test scripts/capture-homepage.test.mjs",
     "seed:community": "node apps/web/scripts/seed-community.mjs",
-    "smoke:company-plugins-api": "node scripts/smoke-company-plugins-api.mjs"
+    "smoke:company-plugins-api": "node scripts/smoke-company-plugins-api.mjs",
+    "check:company-e2e-install": "node scripts/company-fork-e2e-install-check.mjs",
+    "check:company-deploy-workflow": "node scripts/company-fork-deploy-dry-run.mjs"
   },
   "engines": {
     "node": ">=22",

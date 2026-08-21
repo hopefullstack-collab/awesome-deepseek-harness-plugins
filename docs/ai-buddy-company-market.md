@@ -22,11 +22,16 @@ company source. Goal completion still requires **real company domain deploy** an
 
 **Blockers (re-verified this turn):** still no Cloudflare auth in the agent
 environment (`wrangler whoami` unauthenticated; no `CLOUDFLARE_API_TOKEN` / account id /
-real D1+KV ids; Cursor environment secrets none). Interim public HTTPS was proven via
+real D1+KV ids; Cursor environment secrets none; Actions secrets API 403). Interim public HTTPS was proven via
 cloudflared quick tunnel → local Worker (evidence under `docs/examples/smoke-evidence/interim-https-*`)
 but is **not** durable M1. Secrets-gated deploy workflow is ready at
-`.github/workflows/company-fork-deploy.yml`. Desktop PR #19 local vitest **283 passed**;
-GitHub Actions still shows **0 workflow runs** on the fork (owner must enable/approve Actions).
+`.github/workflows/company-fork-deploy.yml`. Desktop PR #19 local vitest green;
+GitHub Actions still shows **0 workflow runs** on the fork (owner must enable/approve Actions —
+see desktop `docs/company-store-ci-note.md`).
+
+Full done-vs-blocked audit: [`goal-completion-checklist.md`](./goal-completion-checklist.md).
+Human unblock packet (secret names + ordered commands):
+[`company-fork-deploy.md` § Human unblock packet](./company-fork-deploy.md#human-unblock-packet-m1--stage-2-pin).
 
 
 ## Product rules
