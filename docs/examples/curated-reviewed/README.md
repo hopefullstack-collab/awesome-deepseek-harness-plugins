@@ -36,3 +36,23 @@ adapter tests). Do not invent fake npm package names in catalog JSON.
 4. Confirm with `curl '.../api/v1/plugins?limit=5'` that `packages[].installMethods`
    and `meta` match the preserved wire shape (`name` registry remains
    `dsh-1024store-catalog`).
+
+## E2E smoke without a private registry
+
+Private npm one-click is **out of scope**. What this fork can prove today:
+
+| Layer | Evidence |
+| --- | --- |
+| Catalog JSON schema | Files above + `company-fork-invariants` sample schema check |
+| Listening Market API | `npm run smoke:company-plugins-api` → syncs these three → anonymous `GET /api/v1/plugins` |
+| Installable wire fixture | `docs/ai-buddy-stage2/patch/fixtures/plugins-api.installable.json` (verified npm `repository_backlink` rows for adapter tests) |
+| Public npm installability | Only after deployed Store runs npm probe against real registry; do not invent package names |
+
+```bash
+# From repo root (starts local origin, syncs samples, curls plugins):
+npm run smoke:company-plugins-api
+# Evidence: docs/examples/smoke-evidence/LATEST.md
+```
+
+After public HTTPS deploy, re-run the same curl against the apex and paste the
+URL into the desktop `company-store` adapter constants.
